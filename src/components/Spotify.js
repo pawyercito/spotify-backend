@@ -89,7 +89,7 @@ class Spotify {
           });
 
           //*Obtengo las tracks del Album y el genero correspondiente para cada cancion
-          const { tracks, genres } = await this.#getGenres({
+          const { tracks, genres, popularity } = await this.#getGenres({
             id: album.id,
             arrayArtist: artistsAlbum,
           });
@@ -109,6 +109,7 @@ class Spotify {
             genre: genres,
             tracks: arrayTracks,
             type: album.album_type,
+            popularity: popularity,
           };
 
           albums.push(obj);
@@ -137,6 +138,7 @@ class Spotify {
           artists: artistsAlbum,
           genre: genres,
           tracks: arrayTracks,
+          popularity: result.popularity,
         };
 
         albums.push(obj);
@@ -174,9 +176,9 @@ class Spotify {
     try {
       const result = await apiFetch({
         type: used["type"],
-        option: typeof used["option"]!== "object"? used["option"] : undefined,
+        option: typeof used["option"] !== "object" ? used["option"] : undefined,
         body:
-          byFormatted === "id"? { id: param } : { param,...used["option"] },
+          byFormatted === "id" ? { id: param } : { param, ...used["option"] },
       });
 
       return result;
@@ -184,7 +186,7 @@ class Spotify {
       console.log(`Hubo un error al usar el apiFetch ${error}`);
       return false;
     }
-};
+  };
 
   #getArtistParsed = async ({ prop, isComplete }) => {
     const arrayArtistPromises = prop.map(async (artist) => {
@@ -245,7 +247,7 @@ class Spotify {
           ? albumComplete["genres"]
           : arrayArtist.reduce((acc, artist) => [...acc, ...artist.genres], []);
 
-      return { tracks, genres };
+      return { tracks, genres, popularity: albumComplete.popularity };
     } catch (error) {
       console.log(`Hubo un error al obtener los generos ${error.message}`);
       return new Error("Genero no encontrado");
