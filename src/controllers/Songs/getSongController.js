@@ -25,8 +25,9 @@ class SongsController {
     
             console.log("Canciones encontradas en la base de datos local:", dbSongs.length);
     
+            let spotifySongs = [];
             if (dbSongs.length < limit) {
-                const spotifySongs = await this.spotify.getTracks({
+                spotifySongs = await this.spotify.getTracks({
                     by: 'name', // Busca por nombre
                     param: name,
                     limit: limit,
@@ -36,38 +37,39 @@ class SongsController {
                 console.log("Respuesta de la API de Spotify:", spotifySongs);
     
                 for (const song of spotifySongs) {
-                    let existingSong = await Songs.findOne({
-                        name: song.name,
-                        'artists.name': song.artists[0]?.name // Asume que el primer artista es el principal y tiene un nombre
-                    });
-    
-                    if (!existingSong) {
-                        const songDoc = await Songs.create({
+                    if (song.name.toLowerCase().startsWith(name.toLowerCase())) {
+                        let existingSong = await Songs.findOne({
                             name: song.name,
-                            genres: song.genres,
-                            duration: song.duration,
-                            image: song.image,
-                            url_cancion: song.url_track, // Guarda la URL de la canción
-                            popularity: song.popularity,
-                            idArtist: []
+                            'artists.name': song.artists[0]?.name // Asume que el primer artista es el principal y tiene un nombre
                         });
     
-                        for (const artistObj of song.artists) {
-                            let existingArtist = await Artist.findOne({ name: artistObj.name });
-                            if (!existingArtist) {
-                                existingArtist = new Artist({
-                                    name: artistObj.name,
-                                    genres: artistObj.genres,
-                                    image: artistObj.image,
-                                    popularity: artistObj.popularity
-                                });
-                                await existingArtist.save(); // Guarda el nuevo artista en la base de datos
+                        if (!existingSong) {
+                            const songDoc = await Songs.create({
+                                name: song.name,
+                                genres: song.genres,
+                                duration: song.duration,
+                                image: song.image,
+                                url_cancion: song.url_track, // Guarda la URL de la canción
+                                idArtist: []
+                            });
+    
+                            for (const artistObj of song.artists) {
+                                let existingArtist = await Artist.findOne({ name: artistObj.name });
+                                if (!existingArtist) {
+                                    existingArtist = new Artist({
+                                        name: artistObj.name,
+                                        genres: artistObj.genres,
+                                        image: artistObj.image,
+                                        popularity: artistObj.popularity
+                                    });
+                                    await existingArtist.save(); // Guarda el nuevo artista en la base de datos
+                                }
+    
+                                songDoc.idArtist.push(existingArtist._id);
                             }
     
-                            songDoc.idArtist.push(existingArtist._id);
+                            await songDoc.save();
                         }
-    
-                        await songDoc.save();
                     }
                 }
             }
@@ -78,12 +80,14 @@ class SongsController {
             const finalSongs = await Songs.find({ name: { $regex: regex } }, {}, { limit: limit, skip: skipAmount })
                                           .populate('idArtist', 'name'); // Vuelve a populart el nombre del artista
     
-            return res.json({ Songs: finalSongs });
+            return res.json({ Songs: [...dbSongs, ...finalSongs] });
         } catch (error) {
             console.error("Error en getSongsbyName:", error);
             return res.status(500).json({ message: 'Error interno del servidor' });
         }
     }
+    
+    
 }
 
 export default SongsController;

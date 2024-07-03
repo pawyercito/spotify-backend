@@ -32,7 +32,6 @@ class SongsByDurationController {
                 duration: parseFloat(song.duration.toFixed(2)), // Mantiene la duración en minutos, redondeada a 2 decimales para la respuesta
                 genres: song.genres,
                 image: song.image,
-                popularity: song.popularity,
                 url_cancion: song.url_cancion,
                 Artist: song.idArtist.map(artist => artist.name) // Extrae solo el nombre de cada artista
             }));
