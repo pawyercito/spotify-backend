@@ -8,6 +8,7 @@ import playlistRoutes from "./src/routes/playlist.js";
 import songsRoutes from "./src/routes/songs.js";
 import albumsRoutes from "./src/routes/album.js";
 import firebaseRoutes from "./src/routes/firebase.js";
+import cors from "cors"; // Importa el paquete cors
 
 connectDB();
 
@@ -15,6 +16,7 @@ configDotenv();
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
+app.use(cors()); // Configura CORS
 app.use(express.json());
 
 app.use("/api/firebase", firebaseRoutes);
@@ -24,6 +26,7 @@ app.use("/api/artist", artistRoutes);
 app.use("/api/playlist", playlistRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/albums", albumsRoutes);
+
 
 app.get("/", (req, res) => {
   res.json({ message: "Hola bebe" });

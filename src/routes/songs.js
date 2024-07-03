@@ -5,9 +5,9 @@ import SongsByArtistController from '../controllers/Songs/getSongByArtistControl
 import getSongById from '../controllers/Songs/getSongByIdController.js';
 import SongsByGenresController  from '../controllers/Songs/getSongByGenresController.js';
 import SongsByDurationController from '../controllers/Songs/getSongByDuration.js';
-import SongsTopGenreController from '../controllers/Tops/getSongByTopGenres.js';
+import AlbumsAndSongsController from '../controllers/Tops/getSongByTopGenres.js';
 
-const songsTopGenreController = new SongsTopGenreController();
+const AlbumAndSongsInstance = new AlbumsAndSongsController();
 
 const songsControllerByDuration = new SongsByDurationController();
 
@@ -43,7 +43,7 @@ router.get('/get-songs-by-artist/:name/:offset?', (req, res ) => {
    router.get('/get-songs-by-duration', songsControllerByDuration.getSongsByDuration);
 
     //Middleware para inicializar el controlador y llamar al método correcto
-    router.get('/get-top-genres', (req, res) => songsTopGenreController.getSongsByGenre(req, res));
+    router.get('/get-combined-genres-albums-songs', (req, res) => AlbumAndSongsInstance.getCombinedResponse(req, res));
 
 
 

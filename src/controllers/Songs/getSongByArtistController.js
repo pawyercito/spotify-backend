@@ -13,69 +13,68 @@ class SongsByArtistController {
         console.log("Accessing getSongsByArtist, Spotify is:", this.spotify);
         try {
             const { name, offset } = req.params;
+            const limit = 10; // Total limit of songs to return
+            const skipAmount = parseInt(offset); // Number of songs to skip
 
-            const limit = 10; // Límite total de canciones a retornar
-            const skipAmount = parseInt(offset); // Saltar el número especificado de canciones
-
-            // Ajustar la expresión regular para coincidir solo con canciones que comiencen con el nombre especificado
+            // Adjust the regex to match songs that start with the specified name
             let regex = new RegExp("^" + name, "i");
 
-            // Buscar canciones en la base de datos
+            // Fetch songs from the database
             let dbSongs = await Songs.find({ name: { $regex: regex } }).skip(skipAmount).limit(limit);
-            console.log("Primary songs", dbSongs.length);
+            console.log("Primary songs:", dbSongs.length);
 
-            // Verificar si se necesita buscar más canciones en Spotify
+            // Check if additional songs are needed from Spotify
             if (dbSongs.length < limit) {
                 console.log("Making request to Spotify API for additional songs...");
                 const spotifyResponse = await this.spotify.getTracks({
                     by: 'artist',
                     param: name,
-                    limit: limit - dbSongs.length, // Solicitar solo la cantidad restante de canciones para completar el límite
+                    limit: limit - dbSongs.length, // Request only the remaining number of songs to complete the limit
                     offset: skipAmount,
                 });
 
                 console.log("Spotify API response:", spotifyResponse);
-                
-
-                if (!spotifyResponse ||!Array.isArray(spotifyResponse.data)) {
-                    console.error('Unexpected response from Spotify:', spotifyResponse);
-                    return res.status(500).json({ message: 'Failed to fetch songs from Spotify' });
-                }
 
                 if (spotifyResponse.error) {
                     console.error('Error fetching songs from Spotify:', spotifyResponse.error);
                     return res.status(500).json({ message: 'Failed to fetch songs from Spotify', error: spotifyResponse.error });
+                }
+
+                if (!spotifyResponse || !Array.isArray(spotifyResponse)) {
+                    console.error('Unexpected response from Spotify:', spotifyResponse);
+                    return res.status(500).json({ message: 'Failed to fetch songs from Spotify' });
                 } else {
                     console.log("Processing songs data from Spotify...");
-                    for (const artistData of spotifyResponse.data) {
+                    for (const artistData of spotifyResponse) {
                         const artistName = artistData.name;
                         const tracks = artistData.tracks || [];
+
+                        let existingArtist = await Artist.findOne({ name: artistName });
+                        if (!existingArtist) {
+                            existingArtist = new Artist({
+                                name: artistName,
+                                genres: artistData.genres || [], // Use an empty array if genres are not available
+                                image: artistData.image || '', // Use a default empty string if image is not available
+                                popularity: artistData.popularity || 0 // Use a default value if popularity is not available
+                            });
+                            await existingArtist.save(); // Save the new artist to the database
+                        }
 
                         for (const track of tracks) {
                             let existingSong = await Songs.findOne({
                                 name: track.name,
-                                'artists.name': artistName
+                                'idArtist': existingArtist._id
                             });
 
                             if (!existingSong) {
-                                const songDoc = await Songs.create({
-                                 ...track,
-                                    idArtist: [] // Inicializar como un array vacío
+                                const songDoc = new Songs({
+                                    name: track.name,
+                                    genres: artistData.genres || [], // Use an empty array if genres are not available
+                                    duration: track.duration_ms || 0, // Use a default value if duration is not available
+                                    image: track.album?.images?.[0]?.url || '', // Safely access the image URL
+                                    url_cancion: track.external_urls?.spotify || '', // Use a default value if URL is not available
+                                    idArtist: existingArtist._id
                                 });
-
-                                let existingArtist = await Artist.findOne({ name: artistName });
-                                if (!existingArtist) {
-                                    existingArtist = new Artist({
-                                        name: artistName,
-                                        genres: artistData.genres,
-                                        image: artistData.image,
-                                        popularity: artistData.popularity
-                                    });
-                                    await existingArtist.save(); // Guardar el nuevo artista en la base de datos
-
-                                    songDoc.idArtist.push(existingArtist._id);
-                                }
-
                                 await songDoc.save();
                             }
                         }
@@ -83,10 +82,10 @@ class SongsByArtistController {
                 }
             }
 
-            // Recargar las canciones de la base de datos para incluir las recién guardadas
+            // Reload the songs from the database to include the newly saved ones
             dbSongs = await Songs.find({ name: { $regex: regex } }).skip(skipAmount).limit(limit);
 
-            // Finalmente, retorna todas las canciones encontradas o añadidas
+            // Finally, return all the found or added songs
             return res.json({ Songs: dbSongs });
         } catch (error) {
             console.error(error);
