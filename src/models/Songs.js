@@ -8,6 +8,7 @@ import mongoose, { Schema } from 'mongoose';
     image: { type: String, required: true },
     url_cancion: { type: String, required: false },
     idArtist: [{ type: Schema.Types.ObjectId, ref: 'Artist', required: true }],
+    popularity: { type: Number, required: false },
 });
 
 export default mongoose.model('Songs', SongsSchema);

@@ -20,7 +20,7 @@ async function getSongById(req, res) {
             });
         }
 
-        const { name, duration, genres, image, url_cancion, idArtist } = song;
+        const { name, duration, genres, image, url_cancion, idArtist, popularity } = song;
         
         // Construye un array de nombres de artistas a partir de las referencias pobladas
         const ArtistNames = idArtist.map(artistRef => artistRef.name);
@@ -32,6 +32,7 @@ async function getSongById(req, res) {
             genres,
             image,
             url_cancion,
+            popularity,
             Artist: ArtistNames // Usa directamente el array de nombres de artistas
         };
 

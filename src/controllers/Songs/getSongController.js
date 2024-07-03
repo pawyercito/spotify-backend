@@ -48,6 +48,7 @@ class SongsController {
                             duration: song.duration,
                             image: song.image,
                             url_cancion: song.url_track, // Guarda la URL de la canción
+                            popularity: song.popularity,
                             idArtist: []
                         });
     
