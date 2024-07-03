@@ -7,7 +7,12 @@ export const register = async (req, res) => {
 
     const validRoles = ["1", "2"];
     if (!validRoles.includes(idRol)) {
-      return res.status(400).json({ message: 'Rol inválido. Los roles válidos son "1" para Artista y "2" para Usuario.', code: 'INVALID_ROLE' });
+      return res.status(400).json({
+        message: {
+          description: 'Rol inválido. Los roles válidos son "1" para Artista y "2" para Usuario.',
+          code: 1 // Cambiado a un número
+        }
+      });
     }
 
     const user = new User({ username, email, password, idRol });
@@ -26,10 +31,11 @@ export const register = async (req, res) => {
     await savedUser.save();
 
     // Preparando la respuesta con el mensaje, descripción y datos requeridos
-    // Ajustamos la estructura aquí para incluir playlists dentro de user
     const responseMessage = {
-      description: 'Usuario creado correctamente',
-      code: '0', // Ajustado al valor permitido
+      message: {
+        description: 'Usuario creado correctamente',
+        code: 0 // Cambiado a un número
+      },
       data: {
         user: {
           ...savedUser.toJSON(), // Asegúrate de que esto convierte el documento Mongoose a un objeto simple
@@ -46,6 +52,11 @@ export const register = async (req, res) => {
     res.json(responseMessage);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error interno del servidor', code: '1' }); // Ajustado al valor permitido
+    res.status(500).json({
+      message: {
+        description: 'Error interno del servidor',
+        code: 1 // Cambiado a un número
+      }
+    });
   }
 };
