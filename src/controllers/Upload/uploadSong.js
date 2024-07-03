@@ -15,7 +15,12 @@ class FirebaseController {
     form.parse(req, async (err, fields, files) => {
       if (err) {
         console.error('Error parsing form:', err);
-        return res.status(500).send('Error parsing form data');
+        return res.status(500).json({
+          message: {
+            description: 'Error parsing form data',
+            code: 1 // Ajustado al valor permitido
+          }
+        });
       }
 
       const { name, genres, duration, idArtist } = fields;
@@ -58,10 +63,10 @@ class FirebaseController {
         // Crear un nuevo documento Songs
         const newSong = new Songs({
           name: name[0],
-          genres: genres, // Asegúrate de que genres sea un array, aquí se asume que se envía como stringified JSON
+          genres: JSON.parse(genres), // Asegúrate de que genres sea un array, aquí se asume que se envía como stringified JSON
           duration: duration[0],
           image: imageDownloadURL, // URL de la imagen desde Firebase
-          url_cancion: songDownloadURL, //URL de la cancion desde Firebase
+          url_cancion: songDownloadURL, // URL de la canción desde Firebase
           idArtist: idArtist.map(id => id), // Utiliza el map para manejar múltiples artistas
         });
 
@@ -79,16 +84,24 @@ class FirebaseController {
           artists
         };
 
-        return res.status(200).json(response);
+        res.status(200).json({
+          message: {
+            description: 'Archivo de canción subido y guardado correctamente',
+            code: 0 // Ajustado al valor permitido
+          },
+          data: response
+        });
       } catch (error) {
         console.error('Error uploading file or saving to MongoDB:', error);
-        return res.status(500).send('Error uploading file or saving to MongoDB');
+        res.status(500).json({
+          message: {
+            description: 'Error uploading file or saving to MongoDB',
+            code: 1 // Ajustado al valor permitido
+          }
+        });
       }
     });
   }
 }
-
-
-
 
 export default FirebaseController;
