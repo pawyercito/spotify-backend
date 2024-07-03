@@ -18,8 +18,13 @@ export const createArtist = async (req, res) => {
 
         // Enviar una respuesta exitosa con el artista creado
         res.status(201).json({
-            message: 'Artista creado correctamente',
-            artist: savedArtist,
+            message: {
+                description: 'Artista creado correctamente',
+                code: 0 // Ajustado al valor permitido
+            },
+            data: {
+                artist: savedArtist
+            }
         });
     } catch (error) {
         // Manejo de errores
@@ -27,14 +32,20 @@ export const createArtist = async (req, res) => {
         if (error instanceof mongoose.Error) {
             // Error de validación de Mongoose
             res.status(400).json({
-                message: 'Error al crear el artista',
-                error: error.message,
+                message: {
+                    description: 'Error al crear el artista',
+                    code: 1 // Ajustado al valor permitido
+                },
+                error: error.message
             });
         } else {
             // Otros errores
             res.status(500).json({
-                message: 'Error interno del servidor',
-                error: error.message,
+                message: {
+                    description: 'Error interno del servidor',
+                    code: 1 // Ajustado al valor permitido
+                },
+                error: error.message
             });
         }
     }
