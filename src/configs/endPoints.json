@@ -1,0 +1,20 @@
+{
+    "token": "https://accounts.spotify.com/api/token",
+    "albums": {
+        "url": "https://api.spotify.com/v1/albums/",
+        "search": {
+            "tracks": "tracks"
+        }
+    },
+    "artist": {
+        "url": "https://api.spotify.com/v1/artists/",
+        "search":{
+            "albums": "albums",
+            "top-tracks": "top-tracks"
+        }
+    },    
+    "tracks": {
+        "url": "https://api.spotify.com/v1/tracks/"
+    },
+    "search": {"url": "https://api.spotify.com/v1/search"}
+}
