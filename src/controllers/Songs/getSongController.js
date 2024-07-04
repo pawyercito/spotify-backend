@@ -12,10 +12,10 @@ class SongsController {
     async getSongsbyName(req, res) {
         console.log("Accediendo a getSongsbyName, Spotify es:", this.spotify);
         try {
-            const { name, offset } = req.params;
+            const { name, offset } = req.query;
     
             const limit = 10; // Establece el límite a 10 elementos por página
-            const skipAmount = parseInt(offset); // Convierte offset a un número entero para determinar cuántos elementos saltar
+            const skipAmount = offset ? parseInt(offset) : 0; // Convierte offset a un número entero para determinar cuántos elementos saltar
     
             // Ajusta la expresión regular para que solo coincida con canciones que comiencen con el nombre especificado
             let regex = new RegExp("^" + name, "i"); // El "^" indica el inicio de la línea, haciendo la búsqueda más precisa
@@ -78,7 +78,7 @@ class SongsController {
             // Asegúrate de usar una expresión regular ajustada al inicio del nombre también en la consulta final
             regex = new RegExp("^" + name, "i");
             const finalSongs = await Songs.find({ name: { $regex: regex } }, {}, { limit: limit, skip: skipAmount })
-                                          .populate('idArtist', 'name'); // Vuelve a populart el nombre del artista
+                                          .populate('idArtist', 'name'); // Vuelve a popular el nombre del artista
     
             return res.json({ Songs: [...dbSongs, ...finalSongs] });
         } catch (error) {
@@ -86,8 +86,6 @@ class SongsController {
             return res.status(500).json({ message: 'Error interno del servidor' });
         }
     }
-    
-    
 }
 
 export default SongsController;
