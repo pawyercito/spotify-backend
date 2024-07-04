@@ -28,10 +28,10 @@ router.get('/get-songs-by-name', (req, res) => {
 
 
 //Middleware para instanciar el controlador y llamar al metodo correcto para getSongsByArtist  
-router.get('/get-songs-by-artist/:name/:offset?', (req, res ) => {
-    const songsControllerInstanceByArtist = new SongsByArtistController();
-    songsControllerInstanceByArtist.getSongsByArtist(req, res);
-  });
+router.get('/get-songs-by-artist', (req, res) => {
+  const songsByArtistControllerInstance = new SongsByArtistController();
+  songsByArtistControllerInstance.getSongsByArtist(req, res);
+});
 
    // Obtener canciones por Id
    router.get('/get-song/:id', getSongById);

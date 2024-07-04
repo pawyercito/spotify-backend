@@ -12,9 +12,9 @@ class SongsByArtistController {
     async getSongsByArtist(req, res) {
         console.log("Accessing getSongsByArtist, Spotify is:", this.spotify);
         try {
-            const { name, offset } = req.params;
+            const { name, offset } = req.query;
             const limit = 10; // Total limit of songs to return
-            const skipAmount = parseInt(offset); // Number of songs to skip
+            const skipAmount = offset ? parseInt(offset) : 0; // Number of songs to skip
 
             // Adjust the regex to match songs that start with the specified name
             let regex = new RegExp("^" + name, "i");
@@ -24,6 +24,7 @@ class SongsByArtistController {
             console.log("Primary songs:", dbSongs.length);
 
             // Check if additional songs are needed from Spotify
+            let spotifySongs = [];
             if (dbSongs.length < limit) {
                 console.log("Making request to Spotify API for additional songs...");
                 const spotifyResponse = await this.spotify.getTracks({
@@ -79,14 +80,17 @@ class SongsByArtistController {
                             }
                         }
                     }
+
+                    // Reload the newly added songs from the database
+                    spotifySongs = await Songs.find({ name: { $regex: regex } }).skip(skipAmount).limit(limit - dbSongs.length);
                 }
             }
 
-            // Reload the songs from the database to include the newly saved ones
-            dbSongs = await Songs.find({ name: { $regex: regex } }).skip(skipAmount).limit(limit);
+            // Combine the results and ensure the total count is not more than 10
+            const allSongs = dbSongs.concat(spotifySongs).slice(0, limit);
 
             // Finally, return all the found or added songs
-            return res.json({ Songs: dbSongs });
+            return res.json({ Songs: allSongs });
         } catch (error) {
             console.error(error);
             return res.status(500).json({ message: 'Internal server error' });
