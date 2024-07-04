@@ -7,13 +7,14 @@ class AlbumsAndSongsController {
         // Puedes inicializar cualquier cosa que necesites aquí
     }
 
-    async getAlbumsByPopularity() {
+    async getAlbumsByPopularity(offset = 0, limit = 10) {
         try {
-            console.log('Consultando álbumes por popularidad en la base de datos local...');
+            console.log(`Consultando álbumes por popularidad en la base de datos local con offset: ${offset}, limit: ${limit}...`);
             
             let albumsFromDB = await Album.find({})
                 .sort({ popularity: -1 })
-                .limit(10) // Limitar a 10 álbumes
+                .skip(offset)
+                .limit(limit)
                 .populate({
                     path: 'idSong',
                     select: 'name duration image url_cancion',
@@ -78,8 +79,9 @@ class AlbumsAndSongsController {
         }
     }
     
+    
 
-    async getSongsByGenres() {
+    async getSongsByGenres(offset = 0, limit = 10) {
         const validGenres = ['Pop', 'Rock', 'Indie', 'Reggaeton', 'Electronica', 'Jazz'];
         const normalizedGenres = validGenres.map(genre => genre.toLowerCase());
     
@@ -88,8 +90,10 @@ class AlbumsAndSongsController {
     
             for (const genre of normalizedGenres) {
                 const songs = await Songs.find({ genres: genre })
-                    .limit(10) // Limitar a 10 canciones por género
-                    .populate('idArtist', 'name');
+                    .skip(offset)
+                    .limit(limit)
+                    .populate('idArtist', 'name')
+                    .exec();
                 console.log(`Songs found for genre ${genre}:`, songs);
                 songsByGenre[genre] = songs;
             }
@@ -113,14 +117,16 @@ class AlbumsAndSongsController {
         }
     }
     
+    
 
-    async getArtistsByPopularity() {
+    async getArtistsByPopularity(offset = 0, limit = 10) {
         try {
-            console.log('Consultando artistas por popularidad en la base de datos local...');
+            console.log(`Consultando artistas por popularidad en la base de datos local con offset: ${offset}, limit: ${limit}...`);
             
             let artistsFromDB = await Artist.find({})
                 .sort({ popularity: -1 })
-                .limit(10) // Limitar a 10 artistas
+                .skip(offset)
+                .limit(limit)
                 .exec();
     
             console.log('Resultado de la consulta:', artistsFromDB);
@@ -164,13 +170,21 @@ class AlbumsAndSongsController {
         }
     }
     
+    
 
     async getCombinedResponse(req, res) {
         try {
-            const albumsResponse = await this.getAlbumsByPopularity();
-            const songsResponse = await this.getSongsByGenres();
-            const artistsResponse = await this.getArtistsByPopularity();
-
+            const albumOffset = parseInt(req.query.albumOffset) || 0;
+            const albumLimit = parseInt(req.query.albumLimit) || 10;
+            const genreOffset = parseInt(req.query.genreOffset) || 0;
+            const genreLimit = parseInt(req.query.genreLimit) || 10;
+            const artistOffset = parseInt(req.query.artistOffset) || 0;
+            const artistLimit = parseInt(req.query.artistLimit) || 10;
+    
+            const albumsResponse = await this.getAlbumsByPopularity(albumOffset, albumLimit);
+            const songsResponse = await this.getSongsByGenres(genreOffset, genreLimit);
+            const artistsResponse = await this.getArtistsByPopularity(artistOffset, artistLimit);
+    
             res.json({
                 albums: albumsResponse,
                 songs: songsResponse,
@@ -187,6 +201,6 @@ class AlbumsAndSongsController {
             });
         }
     }
-}
+}    
 
 export default AlbumsAndSongsController;
