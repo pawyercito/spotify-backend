@@ -12,19 +12,52 @@ class SongsByDurationController {
             const { minDuration, maxDuration, offset, limit } = req.query;
 
             // Define el límite y salto para paginación
-            const queryLimit = limit? parseInt(limit) : 10; // Si no se define un límite, usa 10 por defecto
-            const skipAmount = offset? parseInt(offset) : 0; // Si no se define un offset, comienza desde el principio
+            const queryLimit = limit ? parseInt(limit) : 10; // Si no se define un límite, usa 10 por defecto
+            const skipAmount = offset ? parseInt(offset) : 0; // Si no se define un offset, comienza desde el principio
 
-            // Filtra canciones por duración dentro del rango especificado directamente en minutos
-            const songs = await Songs.find({
-                duration: {
-                    $gte: minDuration? parseFloat(minDuration) : undefined, // Usa $gte para filtrar por duración mínima
-                    $lte: maxDuration? parseFloat(maxDuration) : undefined // Usa $lte para filtrar por duración máxima
-                }})
-           .skip(skipAmount)
-           .limit(queryLimit)
-           .populate('idArtist', 'name') // Poblar solo el campo 'name' del modelo Artist
-           .sort({ duration: 1 }); // Ordena las canciones por duración de manera ascendente
+            // Construye el pipeline de agregación
+            const pipeline = [
+                {
+                    $match: {
+                        duration: {
+                            $gte: minDuration ? parseFloat(minDuration) : 0, // Usa $gte para filtrar por duración mínima
+                            $lte: maxDuration ? parseFloat(maxDuration) : Number.MAX_SAFE_INTEGER // Usa $lte para filtrar por duración máxima
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$name", // Agrupa por el campo `name`
+                        doc: { $first: "$$ROOT" } // Mantén el primer documento en cada grupo
+                    }
+                },
+                {
+                    $replaceRoot: {
+                        newRoot: "$doc"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "artists",
+                        localField: "idArtist",
+                        foreignField: "_id",
+                        as: "idArtist"
+                    }
+                },
+                {
+                    $skip: skipAmount
+                },
+                {
+                    $limit: queryLimit
+                },
+                {
+                    $sort: {
+                        duration: 1 // Ordena las canciones por duración de manera ascendente
+                    }
+                }
+            ];
+
+            const songs = await Songs.aggregate(pipeline);
 
             // Prepara la respuesta ajustando la estructura según lo solicitado
             const responseSongs = songs.map(song => ({
@@ -53,9 +86,8 @@ class SongsByDurationController {
                 },
                 data: {} // La descripción está vacía porque hubo un error
             });
+        }
     }
-}
-
 }
 
 export default SongsByDurationController;
