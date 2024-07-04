@@ -11,15 +11,22 @@ class AlbumsAndSongsController {
         try {
             console.log('Consultando álbumes por popularidad en la base de datos local...');
             
-            // Ordena los álbumes por popularidad en orden descendente (de mayor a menor)
             let albumsFromDB = await Album.find({})
                 .sort({ popularity: -1 })
-                .populate('idSong', 'name duration image url_cancion')
+                .limit(10) // Limitar a 10 álbumes
+                .populate({
+                    path: 'idSong',
+                    select: 'name duration image url_cancion',
+                    populate: {
+                        path: 'idArtist',
+                        select: 'name'
+                    }
+                })
                 .populate('idArtist', 'name genres image popularity')
                 .exec();
-
+    
             console.log('Resultado de la consulta:', albumsFromDB);
-
+    
             if (albumsFromDB.length === 0) {
                 console.log('Álbumes no encontrados');
                 return {
@@ -30,11 +37,11 @@ class AlbumsAndSongsController {
                     data: []
                 };
             }
-
+    
             const responseAlbums = albumsFromDB.map(album => ({
                 name: album.name,
                 duration: album.idSong.reduce((acc, song) => acc + song.duration, 0) / album.idSong.length,
-                genres: album.genres, // Asegúrate de usar 'genres' en lugar de 'genre'
+                genres: album.genres,
                 image: album.image,
                 artists: album.idArtist.map(artist => ({
                     name: artist.name,
@@ -49,9 +56,9 @@ class AlbumsAndSongsController {
                     url_cancion: song.url_cancion
                 }))
             }));
-
+    
             console.log('Álbumes encontrados por popularidad:', responseAlbums);
-
+    
             return {
                 message: {
                     description: "Álbumes obtenidos por popularidad correctamente",
@@ -70,41 +77,32 @@ class AlbumsAndSongsController {
             };
         }
     }
+    
 
-    async getSongsByGenre(req) {
-        const genre = req.query.genre?.trim();
-        console.log('Genre received:', genre);
-
-        const validGenres = ['Pop', 'Rock', 'Indie', 'Reggeaton', 'Electronica', 'Jazz'];
-        const normalizedGenre = genre?.toLowerCase();
-
-        const validGenresNormalized = validGenres.map(g => g.toLowerCase());
-
-        if (!genre || !validGenresNormalized.includes(normalizedGenre)) {
-            console.log('Invalid genre:', genre);
-            return {
-                message: {
-                    code: 1,
-                    description: 'Invalid genre. Valid options are: Pop, Rock, Indie, Reggeaton, Electronica, Jazz.'
-                },
-                data: null
-            };
-        }
-
+    async getSongsByGenres() {
+        const validGenres = ['Pop', 'Rock', 'Indie', 'Reggaeton', 'Electronica', 'Jazz'];
+        const normalizedGenres = validGenres.map(genre => genre.toLowerCase());
+    
         try {
-            // Ajustamos la consulta para buscar todos los documentos donde el array 'genres' contenga el género específico
-            const songs = await Songs.find({ genres: normalizedGenre }).populate('idArtist', 'name');
-            console.log('Songs found:', songs);
-            
+            const songsByGenre = {};
+    
+            for (const genre of normalizedGenres) {
+                const songs = await Songs.find({ genres: genre })
+                    .limit(10) // Limitar a 10 canciones por género
+                    .populate('idArtist', 'name');
+                console.log(`Songs found for genre ${genre}:`, songs);
+                songsByGenre[genre] = songs;
+            }
+    
             return {
                 message: {
                     code: 0,
                     description: 'Success'
                 },
-                data: songs
+                data: songsByGenre
             };
         } catch (error) {
-            console.error('Error fetching songs by genre:', error);
+            console.error('Error fetching songs by genres:', error);
             return {
                 message: {
                     code: 1,
@@ -114,18 +112,19 @@ class AlbumsAndSongsController {
             };
         }
     }
+    
 
     async getArtistsByPopularity() {
         try {
             console.log('Consultando artistas por popularidad en la base de datos local...');
             
-            // Ordena los artistas por popularidad en orden descendente (de mayor a menor)
             let artistsFromDB = await Artist.find({})
                 .sort({ popularity: -1 })
+                .limit(10) // Limitar a 10 artistas
                 .exec();
-
+    
             console.log('Resultado de la consulta:', artistsFromDB);
-
+    
             if (artistsFromDB.length === 0) {
                 console.log('Artistas no encontrados');
                 return {
@@ -136,16 +135,16 @@ class AlbumsAndSongsController {
                     data: []
                 };
             }
-
+    
             const responseArtists = artistsFromDB.map(artist => ({
                 name: artist.name,
                 genres: artist.genres,
                 image: artist.image,
                 popularity: artist.popularity
             }));
-
+    
             console.log('Artistas encontrados por popularidad:', responseArtists);
-
+    
             return {
                 message: {
                     description: "Artistas obtenidos por popularidad correctamente",
@@ -164,11 +163,12 @@ class AlbumsAndSongsController {
             };
         }
     }
+    
 
     async getCombinedResponse(req, res) {
         try {
             const albumsResponse = await this.getAlbumsByPopularity();
-            const songsResponse = await this.getSongsByGenre(req);
+            const songsResponse = await this.getSongsByGenres();
             const artistsResponse = await this.getArtistsByPopularity();
 
             res.json({
