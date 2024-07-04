@@ -89,7 +89,7 @@ class Spotify {
           });
 
           //*Obtengo las tracks del Album y el genero correspondiente para cada cancion
-          const { tracks, genres, popularity } = await this.#getGenres({
+          const { tracks, genres, popularity, url_track } = await this.#getGenres({
             id: album.id,
             arrayArtist: artistsAlbum,
           });

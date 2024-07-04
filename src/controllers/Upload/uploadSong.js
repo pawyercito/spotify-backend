@@ -2,11 +2,11 @@
 
 import storage from '../../utils/firebaseConfig.js';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import Songs from '../../models/Songs.js'; // Ajusta la ruta según donde tengas definido tu modelo Songs
+import Songs from '../../models/Songs.js';
 import { v4 as uuidv4 } from 'uuid';
 import formidable from 'formidable';
 import fs from 'fs';
-import Artist from '../../models/Artist.js'; // Asegúrate de ajustar la ruta según donde tengas definido tu modelo Artist
+import Artist from '../../models/Artist.js';
 
 class FirebaseController {
   async uploadSongFile(req, res) {
@@ -18,14 +18,32 @@ class FirebaseController {
         return res.status(500).json({
           message: {
             description: 'Error parsing form data',
-            code: 1 // Ajustado al valor permitido
+            code: 1
           }
         });
       }
 
-      const { name, genres, duration, idArtist } = fields;
+      const { name, genres, duration } = fields;
       const songFile = files.song[0];
       const imageFile = files.image[0];
+      const idUser = req.user._id; // Obtener el id del usuario autenticado
+
+      // Verificar que genres es un string JSON válido
+      let parsedGenres;
+      try {
+        parsedGenres = JSON.parse(genres);
+        if (!Array.isArray(parsedGenres)) {
+          throw new Error('Genres is not an array');
+        }
+      } catch (error) {
+        console.error('Invalid genres format:', error);
+        return res.status(400).json({
+          message: {
+            description: 'Invalid genres format',
+            code: 1
+          }
+        });
+      }
 
       // Generar un nombre de archivo único
       const uniqueFileName = `${uuidv4()}-${songFile.originalFilename}`;
@@ -63,11 +81,11 @@ class FirebaseController {
         // Crear un nuevo documento Songs
         const newSong = new Songs({
           name: name[0],
-          genres: JSON.parse(genres), // Asegúrate de que genres sea un array, aquí se asume que se envía como stringified JSON
+          genres: parsedGenres,
           duration: duration[0],
-          image: imageDownloadURL, // URL de la imagen desde Firebase
-          url_cancion: songDownloadURL, // URL de la canción desde Firebase
-          idArtist: idArtist.map(id => id), // Utiliza el map para manejar múltiples artistas
+          image: imageDownloadURL,
+          url_cancion: songDownloadURL,
+          idArtist: [idUser],
         });
 
         // Guardar en la base de datos
@@ -75,7 +93,7 @@ class FirebaseController {
         console.log('Song saved successfully to MongoDB:', savedSong);
 
         // Obtener los nombres de los artistas
-        const artistDetails = await Artist.find({ _id: { $in: idArtist } }, 'name');
+        const artistDetails = await Artist.find({ _id: { $in: [idUser] } }, 'name');
         const artists = artistDetails.map(artist => ({ id: artist._id, name: artist.name }));
 
         // Añadir los detalles de los artistas a la respuesta
@@ -87,7 +105,7 @@ class FirebaseController {
         res.status(200).json({
           message: {
             description: 'Archivo de canción subido y guardado correctamente',
-            code: 0 // Ajustado al valor permitido
+            code: 0
           },
           data: response
         });
@@ -96,7 +114,7 @@ class FirebaseController {
         res.status(500).json({
           message: {
             description: 'Error uploading file or saving to MongoDB',
-            code: 1 // Ajustado al valor permitido
+            code: 1
           }
         });
       }

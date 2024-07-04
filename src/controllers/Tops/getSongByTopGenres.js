@@ -17,16 +17,14 @@ class AlbumsAndSongsController {
                 .limit(limit)
                 .populate({
                     path: 'idSong',
-                    select: 'name duration image url_cancion',
+                    select: 'name duration image idArtist',
                     populate: {
                         path: 'idArtist',
-                        select: 'name'
+                        select: 'name genres image popularity'
                     }
                 })
                 .populate('idArtist', 'name genres image popularity')
                 .exec();
-    
-            console.log('Resultado de la consulta:', albumsFromDB);
     
             if (albumsFromDB.length === 0) {
                 console.log('Álbumes no encontrados');
@@ -39,23 +37,42 @@ class AlbumsAndSongsController {
                 };
             }
     
-            const responseAlbums = albumsFromDB.map(album => ({
-                name: album.name,
-                duration: album.idSong.reduce((acc, song) => acc + song.duration, 0) / album.idSong.length,
-                genres: album.genres,
-                image: album.image,
-                artists: album.idArtist.map(artist => ({
-                    name: artist.name,
-                    genres: artist.genres,
-                    image: artist.image,
-                    popularity: artist.popularity
-                })),
-                songs: album.idSong.map(song => ({
-                    name: song.name,
-                    duration: song.duration,
-                    image: song.image,
-                    url_cancion: song.url_cancion
-                }))
+            const responseAlbums = await Promise.all(albumsFromDB.map(async album => {
+                const songDetails = await Promise.all(album.idSong.map(async song => {
+                    const songDetail = await Songs.findById(song._id).select('url_cancion').exec();
+                    return {
+                        ...song.toObject(),
+                        url_cancion: songDetail ? songDetail.url_cancion : ''
+                    };
+                }));
+    
+                const artists = await Promise.all(album.idArtist.map(async artist => {
+                    const artistDetail = await Artist.findById(artist._id).select('name genres image popularity').exec();
+                    return artistDetail.toObject();
+                }));
+    
+                return {
+                    name: album.name,
+                    duration: songDetails.reduce((acc, song) => acc + song.duration, 0) / (songDetails.length || 1),
+                    genres: album.genres,
+                    image: album.image,
+                    artists: artists,
+                    songs: songDetails.map(song => {
+                        if (!song.url_cancion) {
+                            console.error(`Missing url_cancion for song: ${song.name}, album: ${album.name}`);
+                        }
+                        return {
+                            _id: song._id, // Agregar esta línea para incluir el ID de la canción
+                            name: song.name,
+                            duration: song.duration,
+                            image: song.image,
+                            url_cancion: song.url_cancion ? song.url_cancion : '',
+                            artists: song.idArtist.map(artist => ({
+                                name: artist.name
+                            }))
+                        };
+                    })
+                };
             }));
     
             console.log('Álbumes encontrados por popularidad:', responseAlbums);
@@ -116,8 +133,6 @@ class AlbumsAndSongsController {
             };
         }
     }
-    
-    
 
     async getArtistsByPopularity(offset = 0, limit = 10) {
         try {
@@ -169,8 +184,6 @@ class AlbumsAndSongsController {
             };
         }
     }
-    
-    
 
     async getCombinedResponse(req, res) {
         try {
@@ -201,6 +214,6 @@ class AlbumsAndSongsController {
             });
         }
     }
-}    
+}
 
 export default AlbumsAndSongsController;
