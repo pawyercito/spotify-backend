@@ -1,5 +1,3 @@
-// FirebaseController.js
-
 import storage from '../../utils/firebaseConfig.js';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Songs from '../../models/Songs.js';
@@ -7,10 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
 import formidable from 'formidable';
 import fs from 'fs';
 import Artist from '../../models/Artist.js';
+import User from '../../models/User.js'; // Asumiendo que tienes un modelo de User
 
 class FirebaseController {
   async uploadSongFile(req, res) {
-    const form = formidable({ multiple: false });
+    const form = formidable({ multiples: false });
 
     form.parse(req, async (err, fields, files) => {
       if (err) {
@@ -23,32 +22,42 @@ class FirebaseController {
         });
       }
 
+      console.log('Fields:', fields);
+      console.log('Files:', files);
+
       const { name, genres, duration } = fields;
-      const songFile = files.song[0];
-      const imageFile = files.image[0];
+      const songFile = files.song ? files.song[0] : null;
+      const imageFile = files.image ? files.image[0] : null;
       const idUser = req.user._id; // Obtener el id del usuario autenticado
 
-      // Verificar que genres es un string JSON válido
-      let parsedGenres;
-      try {
-        parsedGenres = JSON.parse(genres);
-        if (!Array.isArray(parsedGenres)) {
-          throw new Error('Genres is not an array');
-        }
-      } catch (error) {
-        console.error('Invalid genres format:', error);
+      if (!songFile || !imageFile) {
         return res.status(400).json({
           message: {
-            description: 'Invalid genres format',
+            description: 'Files are missing',
             code: 1
           }
         });
       }
 
+      // Verificar y dividir genres si es una cadena de texto
+      let parsedGenres;
+        parsedGenres = genres.toString().split(',');
+      
+      // Obtener el idArtist asociado al idUser
+      const user = await User.findById(idUser).populate('idArtist');
+      if (!user || !user.idArtist) {
+        return res.status(404).json({
+          message: {
+            description: 'Artist not found for this user',
+            code: 1
+          }
+        });
+      }
+      const idArtist = user.idArtist._id;
+
       // Generar un nombre de archivo único
       const uniqueFileName = `${uuidv4()}-${songFile.originalFilename}`;
       const uniqueImageFileName = `${uuidv4()}-${imageFile.originalFilename}`;
-      console.log(files);
 
       try {
         // Leer el archivo como un buffer
@@ -78,28 +87,39 @@ class FirebaseController {
         console.log('Download URL for song:', songDownloadURL);
         console.log('Download URL for image:', imageDownloadURL);
 
+       // Asegurarse de que name y duration sean valores simples
+      const songName = Array.isArray(name) ? name[0] : name;
+      const songDuration = parseInt(Array.isArray(duration) ? duration[0] : duration, 10);
+
         // Crear un nuevo documento Songs
         const newSong = new Songs({
-          name: name[0],
+          name: songName,
           genres: parsedGenres,
-          duration: duration[0],
+          duration: songDuration,
           image: imageDownloadURL,
           url_cancion: songDownloadURL,
-          idArtist: [idUser],
+          idArtist: [idArtist],
         });
 
         // Guardar en la base de datos
         const savedSong = await newSong.save();
         console.log('Song saved successfully to MongoDB:', savedSong);
 
-        // Obtener los nombres de los artistas
-        const artistDetails = await Artist.find({ _id: { $in: [idUser] } }, 'name');
-        const artists = artistDetails.map(artist => ({ id: artist._id, name: artist.name }));
+        // Obtener los detalles completos del artista
+        const artistDetails = await Artist.findById(idArtist);
+        if (!artistDetails) {
+          return res.status(404).json({
+            message: {
+              description: 'Artist details not found',
+              code: 1
+            }
+          });
+        }
 
-        // Añadir los detalles de los artistas a la respuesta
+        // Añadir los detalles completos del artista a la respuesta
         const response = {
           ...savedSong.toObject(),
-          artists
+          artist: artistDetails.toObject()
         };
 
         res.status(200).json({

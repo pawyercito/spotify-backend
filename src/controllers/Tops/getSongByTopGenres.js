@@ -46,10 +46,9 @@ class AlbumsAndSongsController {
                     };
                 }));
     
-                const artists = await Promise.all(album.idArtist.map(async artist => {
-                    const artistDetail = await Artist.findById(artist._id).select('name genres image popularity').exec();
-                    return artistDetail.toObject();
-                }));
+                const artists = await Promise.all(album.idArtist.map(artist=>artist.name)
+                    
+                );
     
                 return {
                     name: album.name,
@@ -67,9 +66,7 @@ class AlbumsAndSongsController {
                             duration: song.duration,
                             image: song.image,
                             url_cancion: song.url_cancion ? song.url_cancion : '',
-                            artists: song.idArtist.map(artist => ({
-                                name: artist.name
-                            }))
+                            artists: song.idArtist.map(artist => artist.name)
                         };
                     })
                 };
