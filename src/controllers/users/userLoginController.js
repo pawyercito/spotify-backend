@@ -1,5 +1,5 @@
-import User from '../../models/User.js'; // Asegúrate de que la ruta sea correcta
-import { configDotenv } from "dotenv";
+import User from '../../models/User.js';
+import { configDotenv } from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Rol from '../../models/Rol.js';
@@ -54,10 +54,14 @@ export const login = async (req, res) => {
     delete userData.password; // Elimina la contraseña del objeto de usuario
 
     // Buscar la información del artista asociado con el usuario
-    const artist = await Artist.findOne({ userId: user._id });
-    if (!artist) {
-      console.log('Artista no encontrado para este usuario');
-      // Aquí puedes decidir qué hacer si no se encuentra un artista asociado, por ejemplo, continuar sin el artista o devolver un error
+    let artistData = null;
+    if (user.idArtist) {
+      const artist = await Artist.findById(user.idArtist);
+      if (artist) {
+        artistData = artist.toObject();
+      } else {
+        console.log('Artista no encontrado para este usuario');
+      }
     }
 
     res.json({
@@ -70,7 +74,7 @@ export const login = async (req, res) => {
         token,
         Rol: userRole,
         userId,
-        artist: artist ? artist.toObject() : null // Incluir la información del artista si existe
+        artist: artistData // Incluir la información del artista si existe
       }
     });
   } catch (err) {
@@ -81,5 +85,5 @@ export const login = async (req, res) => {
         code: 1
       }
     });
+  }
 };
-}
