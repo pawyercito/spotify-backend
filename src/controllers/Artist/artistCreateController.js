@@ -38,9 +38,7 @@ export const createArtist = async (req, res) => {
     if (Array.isArray(name)) {
       name = name[0];
     }
-    if (Array.isArray(popularity)) {
-      popularity = popularity[0];
-    }
+    
 
     try {
       let imageDownloadURL = '';
@@ -70,7 +68,7 @@ export const createArtist = async (req, res) => {
         name: String(name), // Convertir a string
         genres: genresArray, // Usar el array de géneros
         image: imageDownloadURL, // URL de la imagen desde Firebase
-        popularity: Number(popularity) // Convertir a número
+        popularity: 0 // Convertir a número
       });
 
       // Guardar el nuevo artista en la base de datos

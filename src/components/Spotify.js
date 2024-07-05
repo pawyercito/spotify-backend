@@ -81,7 +81,7 @@ getAlbums = async ({ by, param, limit = 10, offset = 0 }) => {
   
   try {
       // Agrega esta línea para imprimir la respuesta de la API de Spotify
-      console.log('Respuesta de la API de Spotify:', JSON.stringify(result, null, 2));
+  
 
       let albums = [];
       if (byFormatted === "name") {

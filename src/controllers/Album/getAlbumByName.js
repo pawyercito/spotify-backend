@@ -71,13 +71,13 @@ if (Array.isArray(spotifyAlbums)) {
           artistId = existingArtist._id;
           break;
         }
-
+        console.log(track)
         const newSong = new Songs({
           name: track.name,
           genres: track.genres,
           duration: track.duration,
           image: track.image,
-          url_cancion: track.url_track,
+          url_cancion: track.preview_url,
           idArtist: artistId
         });
 
@@ -144,7 +144,7 @@ if (Array.isArray(spotifyAlbums)) {
             } else {
                 console.log(`Usando solo álbumes de la base de datos local.`);
             }
-
+            console.log(albumsFromDB);
             const responseAlbums = albumsFromDB.map(album => ({
                 name: album.name,
                 duration: album.idSong.reduce((acc, song) => acc + song.duration, 0) / album.idSong.length,

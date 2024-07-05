@@ -3,7 +3,7 @@ import Playlist from '../../models/Playlist.js';
 
 export const register = async (req, res) => {
   try {
-    const { username, email, password, idRol } = req.body;
+    const { username, email, password, idRol, idArtist } = req.body;
 
     const validRoles = ["1", "2"];
     if (!validRoles.includes(idRol)) {
@@ -15,7 +15,7 @@ export const register = async (req, res) => {
       });
     }
 
-    const user = new User({ username, email, password, idRol });
+    const user = new User({ username, email, password, idRol, idArtist });
     const savedUser = await user.save();
 
     const favoritePlaylist = new Playlist({
@@ -45,6 +45,9 @@ export const register = async (req, res) => {
             userId: savedPlaylist.userId,
             isFavorite: savedPlaylist.isFavorite,
           }]
+        },
+        artist: {
+          idArtist: idArtist
         }
       },
     };
