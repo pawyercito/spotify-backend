@@ -77,7 +77,7 @@ if (Array.isArray(spotifyAlbums)) {
           genres: track.genres,
           duration: track.duration,
           image: track.image,
-          url_cancion: track.url_cancion,
+          url_cancion: track.url_track,
           idArtist: artistId
         });
 
@@ -164,7 +164,7 @@ if (Array.isArray(spotifyAlbums)) {
                   url_cancion: song.url_cancion
                 }))
               }));
-
+              
             console.log('Prepared response to send:', responseAlbums);
 
             res.json({
