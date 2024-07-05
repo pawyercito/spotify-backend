@@ -10,7 +10,7 @@ configDotenv();
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email }).select('+password'); // Selecciona todos los campos excepto 'password'
+    const user = await User.findOne({ email }).select('+password'); // Selecciona la contraseña
     if (!user) {
       return res.status(400).json({
         message: {
