@@ -70,8 +70,8 @@ class SongsByDurationController {
                 image: song.image,
                 url_cancion: song.url_cancion,
                 artist: song.idArtist.map(artist => artist.name),
-                likes: likedBy.length || 0,
-                isLiked: currentUser ? (likedBy && likedBy.map(String).includes(currentUser._id.toString())) : false
+                likes: song.likes || 0,
+                isLiked: currentUser ? (song.likedBy && song.likedBy.map(String).includes(currentUser._id.toString())) : false
             }));
 
             res.json({
