@@ -5,9 +5,10 @@ import SongsByArtistController from '../controllers/Songs/getSongByArtistControl
 import getSongById from '../controllers/Songs/getSongByIdController.js';
 import SongsByGenresController  from '../controllers/Songs/getSongByGenresController.js';
 import SongsByDurationController from '../controllers/Songs/getSongByDuration.js';
-import SongsTopGenreController from '../controllers/Tops/getSongByTopGenres.js';
+import AlbumsAndSongsController from '../controllers/Tops/getSongByTopGenres.js';
+import { authenticateUser } from "../../middleware_auth.js";
 
-const songsTopGenreController = new SongsTopGenreController();
+const AlbumAndSongsInstance = new AlbumsAndSongsController();
 
 const songsControllerByDuration = new SongsByDurationController();
 
@@ -21,30 +22,32 @@ const songsControllerInstance = new SongsController();
 // Obtener canciones por nombre
 
 // Middleware para instanciar el controlador y llamar al método correcto
-router.get('/get-songs/:name/:offset?', (req, res ) => {
-    const songsControllerInstance = new SongsController();
-    songsControllerInstance.getSongsbyName(req, res);
-  });
-  
+router.get('/get-songs-by-name', authenticateUser, (req, res) => {
+  const songsControllerInstance = new SongsController();
+  songsControllerInstance.getSongsByName(req, res);
+});
+
 
 //Middleware para instanciar el controlador y llamar al metodo correcto para getSongsByArtist  
-router.get('/get-songs-by-artist/:name/:offset?', (req, res ) => {
-    const songsControllerInstanceByArtist = new SongsByArtistController();
-    songsControllerInstanceByArtist.getSongsByArtist(req, res);
-  });
+router.get('/get-songs-by-artist', authenticateUser, (req, res) => {
+  const songsByArtistControllerInstance = new SongsByArtistController();
+  songsByArtistControllerInstance.getSongsByArtist(req, res);
+});
 
    // Obtener canciones por Id
-   router.get('/get-song/:id', getSongById);
+   router.get('/get-song/:id', authenticateUser, getSongById);
 
    // Obtener canciones por generos
-   router.get('/get-songs-by-genres/', songsControllerInstanceByGenres.getSongsByGenres);
+// Obtener canciones por géneros
+router.get('/get-songs-by-genres', authenticateUser, (req, res) => {
+  songsControllerInstanceByGenres.getSongsByGenres(req, res);
+});
 
    //Obtener canciones por duración
-   router.get('/get-songs-by-duration', songsControllerByDuration.getSongsByDuration);
+   router.get('/get-songs-by-duration', authenticateUser, songsControllerByDuration.getSongsByDuration);
 
     //Middleware para inicializar el controlador y llamar al método correcto
-    router.get('/get-top-genres', (req, res) => songsTopGenreController.getSongsByGenre(req, res));
-
+    router.get('/get-combined-genres-albums-songs', authenticateUser, (req, res) => AlbumAndSongsInstance.getCombinedResponse(req, res));
 
 
 export default router

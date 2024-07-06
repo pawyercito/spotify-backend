@@ -62,94 +62,100 @@ class Spotify {
   };
 
   //Obtener albums por id o por nombre
-  getAlbums = async ({ by, param, limit = 10, offset = 0 }) => {
-    const byFormatted = by.toLowerCase();
+  // Obtener albums por id o por nombre
+getAlbums = async ({ by, param, limit = 10, offset = 0 }) => {
+  const byFormatted = by.toLowerCase();
 
-    const option = {
+  const option = {
       name: { type: "search", search: "album" },
       id: { type: "albums", search: "tracks" },
-    };
+  };
 
-    const result = await this.#useApiFetch({
+  const result = await this.#useApiFetch({
       by: byFormatted,
       limit,
       offset,
       options: option,
       param,
-    });
-    try {
+  });
+  
+  try {
+      // Agrega esta línea para imprimir la respuesta de la API de Spotify
+  
+
       let albums = [];
       if (byFormatted === "name") {
-        const arrayAlbums = result["albums"]["items"];
+          const arrayAlbums = result["albums"]["items"];
 
-        for (const album of arrayAlbums) {
-          // Obtener artistas del álbum
+          for (const album of arrayAlbums) {
+              // Obtener artistas del álbum
+              const artistsAlbum = await this.#getArtistParsed({
+                  prop: album.artists,
+              });
+
+              //*Obtengo las tracks del Album y el genero correspondiente para cada cancion
+              const { tracks, genres, popularity } = await this.#getGenres({
+                  id: album.id,
+                  arrayArtist: artistsAlbum,
+              });
+
+              //* Parsea tracks del album
+              const arrayTracks = await this.#getTracksParsed({
+                  prop: tracks,
+                  genres,
+                  imageUrl: album.images[0].url,
+              });
+
+              const obj = {
+                  id: album.id,
+                  name: album.name,
+                  image: album.images[0].url,
+                  artists: artistsAlbum,
+                  genre: genres,
+                  tracks: arrayTracks,
+                  type: album.album_type,
+                  popularity: popularity,
+              };
+
+              albums.push(obj);
+          }
+      } else if (byFormatted === "id") {
+          //*Obtener artistas del album
           const artistsAlbum = await this.#getArtistParsed({
-            prop: album.artists,
+              prop: result.artists,
           });
 
-          //*Obtengo las tracks del Album y el genero correspondiente para cada cancion
-          const { tracks, genres, popularity } = await this.#getGenres({
-            id: album.id,
-            arrayArtist: artistsAlbum,
+          const { tracks, genres } = await this.#getGenres({
+              album: result,
+              arrayArtist: artistsAlbum,
           });
 
-          //* Parsea tracks del album
           const arrayTracks = await this.#getTracksParsed({
-            prop: tracks,
-            genres,
-            imageUrl: album.images[0].url,
+              prop: tracks,
+              genres,
+              imageUrl: result.images[2].url,
           });
 
           const obj = {
-            id: album.id,
-            name: album.name,
-            image: album.images[0].url,
-            artists: artistsAlbum,
-            genre: genres,
-            tracks: arrayTracks,
-            type: album.album_type,
-            popularity: popularity,
+              id: result.id,
+              name: result.name,
+              image: result.images[2].url,
+              artists: artistsAlbum,
+              genre: genres,
+              tracks: arrayTracks,
+              popularity: result.popularity,
           };
 
           albums.push(obj);
-        }
-      } else if (byFormatted === "id") {
-        //*Obtener artistas del album
-        const artistsAlbum = await this.#getArtistParsed({
-          prop: result.artists,
-        });
-
-        const { tracks, genres } = await this.#getGenres({
-          album: result,
-          arrayArtist: artistsAlbum,
-        });
-
-        const arrayTracks = await this.#getTracksParsed({
-          prop: tracks,
-          genres,
-          imageUrl: result.images[2].url,
-        });
-
-        const obj = {
-          id: result.id,
-          name: result.name,
-          image: result.images[2].url,
-          artists: artistsAlbum,
-          genre: genres,
-          tracks: arrayTracks,
-          popularity: result.popularity,
-        };
-
-        albums.push(obj);
       }
-      console.log(albums); // Agregar esta línea
+
       return albums.length > 1 ? albums : albums[0];
-    } catch (error) {
+  } catch (error) {
       console.log(`Hubo un error al obtener albums ${error}`);
       return { error: error.message };
-    }
-  };
+  }
+};
+
 
   #useApiFetch = async ({ by, param, options, limit, offset }) => {
     const byFormatted = by.toLowerCase();

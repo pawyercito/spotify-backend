@@ -3,19 +3,30 @@ import Playlist from '../../models/Playlist.js';
 
 export const register = async (req, res) => {
   try {
-    const { username, email, password, idRol } = req.body;
+    const { username, email, password, idRol, idArtist } = req.body;
 
     const validRoles = ["1", "2"];
     if (!validRoles.includes(idRol)) {
       return res.status(400).json({
         message: {
           description: 'Rol inválido. Los roles válidos son "1" para Artista y "2" para Usuario.',
-          code: 1 // Cambiado a un número
+          code: 1
         }
       });
     }
 
-    const user = new User({ username, email, password, idRol });
+    // Verificar si el usuario ya existe
+    const existingUser = await User.findOne({ $or: [{ username }, { email }]});
+    if (existingUser) {
+      return res.status(409).json({
+        message: {
+          description: 'El usuario ya existe. Por favor, utiliza otro nombre de usuario o correo electrónico.',
+          code: 1 // Código personalizado para indicar duplicidad
+        }
+      });
+    }
+
+    const user = new User({ username, email, password, idRol, idArtist });
     const savedUser = await user.save();
 
     const favoritePlaylist = new Playlist({
@@ -34,7 +45,7 @@ export const register = async (req, res) => {
     const responseMessage = {
       message: {
         description: 'Usuario creado correctamente',
-        code: 0 // Cambiado a un número
+        code: 0
       },
       data: {
         user: {
@@ -45,6 +56,9 @@ export const register = async (req, res) => {
             userId: savedPlaylist.userId,
             isFavorite: savedPlaylist.isFavorite,
           }]
+        },
+        artist: {
+          idArtist: idArtist
         }
       },
     };
@@ -52,10 +66,18 @@ export const register = async (req, res) => {
     res.json(responseMessage);
   } catch (error) {
     console.error(error);
+    if (error.code === 11000 || error.code === 11001) { // Código de error para duplicados en MongoDB
+      return res.status(409).json({
+        message: {
+          description: 'El usuario ya existe. Por favor, utiliza otro nombre de usuario o correo electrónico.',
+          code: 2 // Código personalizado para indicar duplicidad
+        }
+      });
+    }
     res.status(500).json({
       message: {
         description: 'Error interno del servidor',
-        code: 1 // Cambiado a un número
+        code: 1
       }
     });
   }

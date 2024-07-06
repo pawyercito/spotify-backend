@@ -31,7 +31,7 @@ class AlbumsController {
             let albumsFromDB = await Album.find({ name: { $regex: new RegExp(name, 'i') } })
                 .skip(offset)
                 .limit(limit)
-                .populate('idSong', 'name duration image') // Populando canciones
+                .populate('idSong', 'name duration image likes likedBy') // Populando canciones con likes
                 .populate('idArtist', 'name genres image popularity') // Populando artistas
                 .exec();
 
@@ -42,88 +42,110 @@ class AlbumsController {
                 console.log(`Faltan ${remaining} álbumes, consultando a Spotify...`);
 
                 const spotifyAlbums = await this.spotify.getAlbums({ by: 'name', param: name, limit: remaining, offset: offset });
-                console.log(`Álbumes obtenidos de Spotify: ${spotifyAlbums.length}`);
 
-                for (const spotifyAlbum of spotifyAlbums) {
-                    const trackIds = [];
+                if (Array.isArray(spotifyAlbums)) {
+                    console.log(`Álbumes obtenidos de Spotify: ${spotifyAlbums.length}`);
 
-                    for (const track of spotifyAlbum.tracks) {
-                        let existingSong = await Songs.findOne({ name: track.name });
-                        let songId;
+                    for (const spotifyAlbum of spotifyAlbums) {
+                        const trackIds = [];
 
-                        if (!existingSong) {
-                            const newSong = new Songs({
-                                name: track.name,
-                                genres: track.genres,
-                                duration: track.duration,
-                                image: track.image,
-                                url_cancion: track.url,
-                                idArtist: [] // Initialize with an empty array
-                                
-                            });
+                        for (const track of spotifyAlbum.tracks) {
+                            let existingSong = await Songs.findOne({ name: track.name });
 
-                            try {
-                                const savedSong = await newSong.save();
-                                songId = savedSong._id;
-                            } catch (error) {
-                                console.error(`Error al guardar la canción ${track.name}: ${error.message}`);
-                                continue; // Continue with the next song if there's an error
+                            let songId;
+                            if (!existingSong) {
+                                // Buscar o guardar el artista de la canción
+                                let artistId;
+                                for (const artist of track.artists) {
+                                    let existingArtist = await Artist.findOne({ name: artist.name });
+                                    if (!existingArtist) {
+                                        const newArtist = new Artist({
+                                            name: artist.name,
+                                            genres: artist.genres,
+                                            image: artist.image,
+                                            popularity: artist.popularity
+                                        });
+                                        existingArtist = await newArtist.save();
+                                    }
+                                    artistId = existingArtist._id;
+                                    break;
+                                }
+                                console.log(track)
+                                const newSong = new Songs({
+                                    name: track.name,
+                                    genres: track.genres,
+                                    duration: track.duration,
+                                    image: track.image,
+                                    url_cancion: track.url_track,
+                                    idArtist: artistId
+                                });
+
+                                try {
+                                    const savedSong = await newSong.save();
+                                    songId = savedSong._id;
+                                } catch (error) {
+                                    console.error(`Error al guardar la canción ${track.name}: ${error.message}`);
+                                    continue;
+                                }
+                            } else {
+                                songId = existingSong._id;
                             }
-                        } else {
-                            songId = existingSong._id;
+
+                            trackIds.push(songId);
                         }
 
-                        trackIds.push(songId);
-                    }
+                        const artistIds = [];
 
-                    const artistIds = [];
+                        for (const artist of spotifyAlbum.artists) {
+                            let existingArtist = await Artist.findOne({ name: artist.name });
 
-                    for (const artist of spotifyAlbum.artists) {
-                        let existingArtist = await Artist.findOne({ name: artist.name });
+                            if (!existingArtist) {
+                                const newArtist = new Artist({
+                                    name: artist.name,
+                                    genres: artist.genres,
+                                    image: artist.image,
+                                    popularity: artist.popularity
+                                });
 
-                        if (!existingArtist) {
-                            const newArtist = new Artist({
-                                name: artist.name,
-                                genres: artist.genres,
-                                image: artist.image,
-                                popularity: artist.popularity
-                            });
-
-                            try {
-                                existingArtist = await newArtist.save();
-                            } catch (error) {
-                                console.error(`Error al guardar el artista ${artist.name}: ${error.message}`);
-                                continue; // Continue with the next artist if there's an error
+                                try {
+                                    existingArtist = await newArtist.save();
+                                } catch (error) {
+                                    console.error(`Error al guardar el artista ${artist.name}: ${error.message}`);
+                                    continue;
+                                }
                             }
+
+                            artistIds.push(existingArtist._id);
                         }
 
-                        artistIds.push(existingArtist._id);
-                    }
+                        const newAlbum = new Album({
+                            idAlbum: spotifyAlbum.id,
+                            name: spotifyAlbum.name,
+                            idSong: trackIds,
+                            genre: spotifyAlbum.genre,
+                            image: spotifyAlbum.image,
+                            idArtist: artistIds,
+                            popularity: spotifyAlbum.popularity
+                        });
 
-                    const newAlbum = new Album({
-                        idAlbum: spotifyAlbum.id,
-                        name: spotifyAlbum.name,
-                        idSong: trackIds,
-                        genre: spotifyAlbum.genre,
-                        image: spotifyAlbum.image,
-                        idArtist: artistIds, // Assign the artist IDs to the album
-                        popularity: spotifyAlbum.popularity
-                    });
-
-                    try {
-                        await newAlbum.save();
-                        console.log(`Álbum guardado en la base de datos: ${newAlbum.name}`);
-                        albumsFromDB.push(newAlbum); // Add the saved album to the list
-                    } catch (error) {
-                        console.error(`Error al guardar el álbum ${spotifyAlbum.name}: ${error.message}`);
-                        continue; // Continue with the next album if there's an error
+                        try {
+                            await newAlbum.save();
+                            console.log(`Álbum guardado en la base de datos: ${newAlbum.name}`);
+                            albumsFromDB.push(newAlbum);
+                        } catch (error) {
+                            console.error(`Error al guardar el álbum ${spotifyAlbum.name}: ${error.message}`);
+                            continue;
+                        }
                     }
+                } else {
+                    console.log(`Spotify API no devolvió un array de álbumes`);
                 }
             } else {
-                console.log(`Using only albums from the local database.`);
+                console.log(`Usando solo álbumes de la base de datos local.`);
             }
 
             const responseAlbums = albumsFromDB.map(album => ({
+                _id: album._id,
                 name: album.name,
                 duration: album.idSong.reduce((acc, song) => acc + song.duration, 0) / album.idSong.length,
                 genres: album.genre || [],
@@ -135,12 +157,19 @@ class AlbumsController {
                     image: artist.image,
                     popularity: artist.popularity
                 })),
-                songs: album.idSong.map(song => ({
-                    name: song.name,
-                    duration: song.duration,
-                    image: song.image,
-                    url_cancion: song.url_cancion
-                }))
+                songs: album.idSong.map(song => {
+                    if (!song) return {}; // Agregar verificación para song
+
+                    return {
+                        _id: song._id,
+                        name: song.name,
+                        duration: song.duration,
+                        image: song.image,
+                        url_cancion: song.url_cancion,
+                        likes: song.likes || 0,
+                        isLiked: req.user ? (song.likedBy && song.likedBy.includes(req.user._id.toString())) : false
+                    };
+                })
             }));
 
             console.log('Prepared response to send:', responseAlbums);

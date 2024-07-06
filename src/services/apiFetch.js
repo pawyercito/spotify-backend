@@ -40,6 +40,8 @@ export const apiFetch = async ({ type, option = false, body }) => {
     console.log(
       `Hubo un error al hacer la peticion a la API. Error: ${error.message}`
     );
+    console.log(endpoints);
+    console.log(endpoints[type])
     return { error: error.message };
   }
 };

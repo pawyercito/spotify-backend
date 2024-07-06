@@ -28,19 +28,9 @@ export const createArtist = async (req, res) => {
     // Generar un nombre de archivo único para la imagen
     const uniqueImageFileName = imageFile ? `${uuidv4()}-${imageFile.originalFilename}` : null;
 
-    // Asegurarse de que genres sea un array de strings
-// Asegurarse de que genres sea un array de strings
-    const genresString = fields.genres && Array.isArray(fields.genres) ? JSON.stringify(fields.genres) : '';  
-      
-    const genresArray = genresString.split(',').map(genre => genre.trim());
-
-    // Convertir name y popularity a los tipos correctos si son arrays
-    if (Array.isArray(name)) {
-      name = name[0];
-    }
-    if (Array.isArray(popularity)) {
-      popularity = popularity[0];
-    }
+    
+    let parsedGenres;
+        parsedGenres = genres.toString().split(',');
 
     try {
       let imageDownloadURL = '';
@@ -68,9 +58,9 @@ export const createArtist = async (req, res) => {
       // Crear un nuevo objeto Artist con los datos recibidos y la URL de la imagen
       const newArtist = new Artist({
         name: String(name), // Convertir a string
-        genres: genresArray, // Usar el array de géneros
+        genres: parsedGenres, // Usar el array de géneros
         image: imageDownloadURL, // URL de la imagen desde Firebase
-        popularity: Number(popularity) // Convertir a número
+        popularity: 0 // Convertir a número
       });
 
       // Guardar el nuevo artista en la base de datos

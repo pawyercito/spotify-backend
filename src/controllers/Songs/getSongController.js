@@ -1,86 +1,61 @@
-import Spotify from '../../components/Spotify.js';
 import Songs from '../../models/Songs.js';
 import Artist from '../../models/Artist.js';
 
 class SongsController {
-    constructor() {
-        console.log("Creando instancia de Spotify...");
-        this.spotify = new Spotify();
-        console.log("Instancia de Spotify creada:", this.spotify);
-    }
-
-    async getSongsbyName(req, res) {
-        console.log("Accediendo a getSongsbyName, Spotify es:", this.spotify);
+    async getSongsByName(req, res) {
         try {
-            const { name, offset } = req.params;
-    
-            const limit = 10; // Establece el límite a 10 elementos por página
-            const skipAmount = parseInt(offset); // Convierte offset a un número entero para determinar cuántos elementos saltar
-    
-            // Ajusta la expresión regular para que solo coincida con canciones que comiencen con el nombre especificado
-            let regex = new RegExp("^" + name, "i"); // El "^" indica el inicio de la línea, haciendo la búsqueda más precisa
-    
-            let dbSongs = await Songs.find({ name: { $regex: regex } }, {}, { limit: limit, skip: skipAmount })
-                                    .populate('idArtist', 'name'); // Popula el nombre del artista desde el modelo Artist
-    
-            console.log("Canciones encontradas en la base de datos local:", dbSongs.length);
-    
-            if (dbSongs.length < limit) {
-                const spotifySongs = await this.spotify.getTracks({
-                    by: 'name', // Busca por nombre
-                    param: name,
-                    limit: limit,
-                    offset: skipAmount,
-                });
-    
-                console.log("Respuesta de la API de Spotify:", spotifySongs);
-    
-                for (const song of spotifySongs) {
-                    let existingSong = await Songs.findOne({
-                        name: song.name,
-                        'artists.name': song.artists[0]?.name // Asume que el primer artista es el principal y tiene un nombre
-                    });
-    
-                    if (!existingSong) {
-                        const songDoc = await Songs.create({
-                            name: song.name,
-                            genres: song.genres,
-                            duration: song.duration,
-                            image: song.image,
-                            url_cancion: song.url_track, // Guarda la URL de la canción
-                            idArtist: []
-                        });
-    
-                        for (const artistObj of song.artists) {
-                            let existingArtist = await Artist.findOne({ name: artistObj.name });
-                            if (!existingArtist) {
-                                existingArtist = new Artist({
-                                    name: artistObj.name,
-                                    genres: artistObj.genres,
-                                    image: artistObj.image,
-                                    popularity: artistObj.popularity
-                                });
-                                await existingArtist.save(); // Guarda el nuevo artista en la base de datos
-                            }
-    
-                            songDoc.idArtist.push(existingArtist._id);
-                        }
-    
-                        await songDoc.save();
-                    }
-                }
+            const { name, offset = 0 } = req.query;
+            const limit = 10;
+
+            // Buscar canciones en la base de datos que coincidan con el nombre
+            let songs = await Songs.find({});
+
+            // Filtrar canciones por nombre usando una expresión regular
+            const regex = new RegExp(name, 'gi'); // 'i' para ignorar mayúsculas y minúsculas, 'g' para búsqueda global
+            const regex2 = new RegExp(name.substring(0, 2), 'gi');
+            let songs2 = songs.filter(song => regex.test(song.name));
+
+            if (songs2.length === 0) {
+                songs2 = songs.filter(song => regex2.test(song.name));
             }
-    
-            // Retorna todas las canciones encontradas o agregadas
-            // Asegúrate de usar una expresión regular ajustada al inicio del nombre también en la consulta final
-            regex = new RegExp("^" + name, "i");
-            const finalSongs = await Songs.find({ name: { $regex: regex } }, {}, { limit: limit, skip: skipAmount })
-                                          .populate('idArtist', 'name'); // Vuelve a populart el nombre del artista
-    
-            return res.json({ Songs: finalSongs });
+
+            // Aplicar limit y offset a songs2
+            songs2 = songs2.slice(offset * limit, (offset * limit) + limit);
+
+            const currentUser = req.user;
+
+            // Transformar la lista de canciones para ajustar el formato de artistas
+            const transformedSongs = await Promise.all(songs2.map(async song => {
+                const { _id, name, duration, genres, image, url_cancion, idArtist, likes, likedBy, __v } = song.toObject();
+                const artists = await Promise.all(idArtist.map(async artistId => {
+                    const artist = await Artist.findById(artistId);
+                    return { id: artist._id, name: artist.name };
+                }));
+                return {
+                    _id,
+                    name,
+                    duration,
+                    genres,
+                    image,
+                    url_cancion,
+                    likes: likes || 0,
+                    likedBy,
+                    __v,
+                    artists,
+                    isLiked: currentUser ? song.likedBy.includes(currentUser._id.toString()) : false
+                };
+            }));
+
+            return res.json({
+                message: { description: "Operación exitosa", code: 0 },
+                data: { Songs: transformedSongs }
+            });
         } catch (error) {
-            console.error("Error en getSongsbyName:", error);
-            return res.status(500).json({ message: 'Error interno del servidor' });
+            console.error("Error en getSongsByName:", error);
+            return res.status(500).json({
+                message: { description: 'Error interno del servidor', code: 1 },
+                data: {}
+            });
         }
     }
 }
