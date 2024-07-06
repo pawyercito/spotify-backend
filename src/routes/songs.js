@@ -24,7 +24,7 @@ const songsControllerInstance = new SongsController();
 // Middleware para instanciar el controlador y llamar al método correcto
 router.get('/get-songs-by-name', authenticateUser, (req, res) => {
   const songsControllerInstance = new SongsController();
-  songsControllerInstance.getSongsbyName(req, res);
+  songsControllerInstance.getSongsByName(req, res);
 });
 
 
