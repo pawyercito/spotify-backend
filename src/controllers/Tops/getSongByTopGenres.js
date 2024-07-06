@@ -96,7 +96,7 @@ class AlbumsAndSongsController {
     
 
     async getSongsByGenres(offset = 0, limit = 10) {
-        const validGenres = ['Pop', 'Rock', 'Indie', 'Reggaeton', 'Electronica', 'Jazz'];
+        const validGenres = ['Pop', 'Rock', 'Indie', 'Reggaeton', 'Dance Pop', 'Jazz'];
         const normalizedGenres = validGenres.map(genre => genre.toLowerCase());
     
         // Definir imágenes por género
@@ -106,7 +106,7 @@ class AlbumsAndSongsController {
             'reggaeton': 'https://firebasestorage.googleapis.com/v0/b/spiralmusicapp.appspot.com/o/8e5504546937558f711958b221eafb3b7d60be76.jpeg?alt=media&token=62dc74c7-10f4-4778-b926-e651db39d7ee',
             'indie': 'https://firebasestorage.googleapis.com/v0/b/spiralmusicapp.appspot.com/o/652d7ed5bbf4223960b5c92f_What%20is%20Indie%20Music.jpg?alt=media&token=728fbd76-a460-4f94-aa00-b05f09957aa0',
             'jazz': 'https://firebasestorage.googleapis.com/v0/b/spiralmusicapp.appspot.com/o/Louis_Armstrong_NYWTS.jpg?alt=media&token=70bb2de2-1828-4fc1-9334-513a1db85ea1',
-            'electronica': 'https://firebasestorage.googleapis.com/v0/b/spiralmusicapp.appspot.com/o/musica-electronica-5.webp?alt=media&token=dcadfa8b-3ca4-4c05-9324-0290f8eb4465'
+            'dance pop': 'https://firebasestorage.googleapis.com/v0/b/spiralmusicapp.appspot.com/o/musica-electronica-5.webp?alt=media&token=dcadfa8b-3ca4-4c05-9324-0290f8eb4465'
         };
     
         try {

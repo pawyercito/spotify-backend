@@ -70,13 +70,13 @@ class AlbumsController {
                                     artistId = existingArtist._id;
                                     break;
                                 }
-
+                                console.log(track)
                                 const newSong = new Songs({
                                     name: track.name,
                                     genres: track.genres,
                                     duration: track.duration,
                                     image: track.image,
-                                    url_cancion: track.preview_url,
+                                    url_cancion: track.url_track,
                                     idArtist: artistId
                                 });
 

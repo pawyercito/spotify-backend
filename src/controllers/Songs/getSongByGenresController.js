@@ -9,15 +9,32 @@ class SongsByGenresController {
             const queryLimit = limit ? parseInt(limit) : 10;
             const skipAmount = offset ? parseInt(offset) : 0;
 
-            const songs = await Songs.find({
-                genres: {
-                    $in: parsedGenres
+            // Construye el pipeline de agregación
+            const pipeline = [
+                {
+                    $match: {
+                        genres: {
+                            $in: parsedGenres
+                        }
+                    }
+                },
+                {
+                    $skip: skipAmount
+                },
+                {
+                    $limit: queryLimit
+                },
+                {
+                    $lookup: {
+                        from: "artists",
+                        localField: "idArtist",
+                        foreignField: "_id",
+                        as: "idArtist"
+                    }
                 }
-            })
-            .skip(skipAmount)
-            .limit(queryLimit)
-            .populate('idArtist', 'name')
-            .lean();
+            ];
+
+            const songs = await Songs.aggregate(pipeline).exec();
 
             // Obtener el usuario actual desde el middleware de autenticación
             const currentUser = req.user;
