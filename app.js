@@ -9,6 +9,7 @@ import songsRoutes from "./src/routes/songs.js";
 import albumsRoutes from "./src/routes/album.js";
 import firebaseRoutes from "./src/routes/firebase.js";
 import genresRoutes from "./src/routes/genres.js";
+import likeRoutes from "./src/routes/like.js";
 import cors from "cors"; // Importa el paquete cors
 
 connectDB();
@@ -20,6 +21,7 @@ const PORT = process.env.PORT ?? 4000;
 app.use(cors()); // Configura CORS
 app.use(express.json());
 
+app.use("/api/likes", likeRoutes);
 app.use("/api/genres", genresRoutes);
 app.use("/api/firebase", firebaseRoutes);
 app.use("/api/songs", songsRoutes);

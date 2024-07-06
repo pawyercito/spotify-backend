@@ -27,7 +27,7 @@ class AlbumsGenreController {
             })
             .skip(skipAmount)
             .limit(queryLimit)
-            .populate('idSong', 'name duration image url_cancion')
+            .populate('idSong', 'name duration image url_cancion likes likedBy')
             .populate('idArtist', 'name genres image popularity')
             .exec();
 
@@ -44,6 +44,9 @@ class AlbumsGenreController {
                 });
             }
 
+            // Get the current user from request
+            const currentUser = req.user;
+
             const responseAlbums = albumsFromDB.map(album => ({
                 name: album.name,
                 duration: album.idSong.reduce((acc, song) => acc + song.duration, 0) / album.idSong.length,
@@ -59,7 +62,9 @@ class AlbumsGenreController {
                     name: song.name,
                     duration: song.duration,
                     image: song.image,
-                    url_cancion: song.url_cancion
+                    url_cancion: song.url_cancion,
+                    likes: song.likes || 0,
+                    isLiked: currentUser ? song.likedBy.includes(currentUser._id.toString()) : false
                 }))
             }));
 

@@ -19,12 +19,12 @@ class AlbumsIdController {
             });
         }
 
-        console.log(`Buscando álbum por ID: ${idAlbum}`);
+        console.log(`Buscando álbum por _id: ${idAlbum}`);
 
         try {
             console.log('Consultando álbum en la base de datos local...');
-            let albumFromDB = await Album.findOne({ idAlbum })
-                .populate('idSong', 'name duration image') // Populando canciones
+            let albumFromDB = await Album.findById(idAlbum)
+                .populate('idSong', 'name duration image likes likedBy') // Populando canciones con likes
                 .populate('idArtist', 'name genres image popularity') // Populando artistas
                 .exec();
 
@@ -38,6 +38,9 @@ class AlbumsIdController {
                     data: {}
                 });
             }
+
+            // Obtener el usuario actual
+            const currentUser = req.user;
 
             const responseAlbum = {
                 name: albumFromDB.name,
@@ -54,7 +57,9 @@ class AlbumsIdController {
                     name: song.name,
                     duration: song.duration,
                     image: song.image,
-                    url_cancion: song.url_cancion
+                    url_cancion: song.url_cancion,
+                    likes: song.likes || 0,
+                    isLiked: currentUser ? song.likedBy.includes(currentUser._id.toString()) : false
                 }))
             };
 

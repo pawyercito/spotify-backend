@@ -14,20 +14,25 @@ class SongsController {
             const { name, offset = 0 } = req.query;
             const limit = 10;
             const regex = new RegExp(`^${name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}`, "i");
-    
+
             let dbSongs = await Songs.find({ name: { $regex: regex } }, {}, { limit, skip: parseInt(offset) })
                              .populate('idArtist', 'name'); // Asegúrate de que esto devuelve los nombres de los artistas
-    
+
             if (dbSongs.length < limit) {
                 await this.searchAndSaveSpotifySongs(name, limit - dbSongs.length, parseInt(offset), dbSongs);
             }
-    
-            // Transforma la lista de canciones para incluir solo los nombres de los artistas bajo el campo "artists"
+
+            // Obtener el usuario actual
+            const currentUser = req.user;
+
+            // Transforma la lista de canciones para incluir los campos "isLiked" y "likes"
             const transformedSongs = dbSongs.map(song => ({
                 ...song.toObject(), // Convierte el documento a un objeto plano
-                artists: song.idArtist.map(artist => artist.name) // Extrae solo el nombre del artista y cambia el nombre del campo a "artists"
+                artists: song.idArtist.map(artist => artist.name), // Extrae solo el nombre del artista
+                isLiked: currentUser ? song.likedBy.includes(currentUser._id.toString()) : false,
+                likes: song.likes || 0 // Incluye la cantidad de likes, o 0 si no hay
             }));
-    
+
             return res.json({
                 message: { description: "Operación exitosa", code: 0 },
                 data: { Songs: transformedSongs }
@@ -40,10 +45,11 @@ class SongsController {
             });
         }
     }
+
     async searchAndSaveSpotifySongs(name, limit, offset, dbSongs) {
         const spotifyResponse = await this.spotify.getTracks({ by: 'name', param: name, limit, offset });
         let foundSongs = false;
-    
+
         for (const song of spotifyResponse) {
             if (song.name.toLowerCase().startsWith(name.toLowerCase())) {
                 foundSongs = true;
@@ -57,12 +63,12 @@ class SongsController {
                         url_cancion: song.url_track,
                         idArtist: []
                     });
-    
+
                     for (const artistObj of song.artists) {
                         let artist = await this.findOrCreateArtist(artistObj);
                         songDoc.idArtist.push(artist._id);
                     }
-    
+
                     await songDoc.save();
                     dbSongs.push(songDoc);
                 } else {
@@ -70,7 +76,7 @@ class SongsController {
                 }
             }
         }
-    
+
         if (!foundSongs) {
             throw new Error(`No hay canciones por el nombre: ${name}`);
         }

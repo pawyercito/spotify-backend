@@ -154,11 +154,23 @@ class AlbumsAndSongsController {
                 };
             }
     
-            const responseArtists = artistsFromDB.map(artist => ({
-                name: artist.name,
-                genres: artist.genres,
-                image: artist.image,
-                popularity: artist.popularity
+            // Obtener detalles de canciones por cada artista
+            const responseArtists = await Promise.all(artistsFromDB.map(async artist => {
+                const songs = await Songs.find({ idArtist: artist._id })
+                    .select('name duration image')
+                    .exec();
+
+                return {
+                    name: artist.name,
+                    genres: artist.genres,
+                    image: artist.image,
+                    popularity: artist.popularity,
+                    songs: songs.map(song => ({
+                        name: song.name,
+                        duration: song.duration,
+                        image: song.image
+                    }))
+                };
             }));
     
             console.log('Artistas encontrados por popularidad:', responseArtists);

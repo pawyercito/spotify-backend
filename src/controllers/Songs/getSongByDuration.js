@@ -27,7 +27,7 @@ class SongsByDurationController {
                 },
                 {
                     $group: {
-                        _id: "$name", // Agrupa por el campo `name`
+                        _id: "$_id", // Cambiar a agrupar por _id en lugar de name
                         doc: { $first: "$$ROOT" } // Mantén el primer documento en cada grupo
                     }
                 },
@@ -59,19 +59,25 @@ class SongsByDurationController {
 
             const songs = await Songs.aggregate(pipeline);
 
+            // Obtener el usuario actual
+            const currentUser = req.user;
+
             // Prepara la respuesta ajustando la estructura según lo solicitado
             const responseSongs = songs.map(song => ({
+                _id: song._id,
                 name: song.name,
                 duration: parseFloat(song.duration.toFixed(2)), // Mantiene la duración en minutos, redondeada a 2 decimales para la respuesta
                 genres: song.genres,
                 image: song.image,
                 url_cancion: song.url_cancion,
-                Artist: song.idArtist.map(artist => artist.name) // Extrae solo el nombre de cada artista
+                artist: song.idArtist.map(artist => artist.name), // Extrae solo el nombre de cada artista
+                likes: song.likes || 0,
+                isLiked: currentUser ? (song.likedBy && song.likedBy.map(String).includes(currentUser._id.toString())) : false
             }));
 
             res.json({
                 message: {
-                    description: "Se obtuvo la canción correctamente",
+                    description: "Se obtuvieron las canciones correctamente",
                     code: 0 // Indicamos éxito al encontrar y obtener la canción
                 },
                 data: responseSongs

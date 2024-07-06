@@ -31,7 +31,7 @@ class AlbumsController {
             let albumsFromDB = await Album.find({ name: { $regex: new RegExp(name, 'i') } })
                 .skip(offset)
                 .limit(limit)
-                .populate('idSong', 'name duration image url_cancion') // Populando canciones
+                .populate('idSong', 'name duration image likes likedBy') // Populando canciones con likes
                 .populate('idArtist', 'name genres image popularity') // Populando artistas
                 .exec();
 
@@ -43,57 +43,56 @@ class AlbumsController {
 
                 const spotifyAlbums = await this.spotify.getAlbums({ by: 'name', param: name, limit: remaining, offset: offset });
 
-if (Array.isArray(spotifyAlbums)) {
-  console.log(`Álbumes obtenidos de Spotify: ${spotifyAlbums.length}`);
+                if (Array.isArray(spotifyAlbums)) {
+                    console.log(`Álbumes obtenidos de Spotify: ${spotifyAlbums.length}`);
 
-  for (const spotifyAlbum of spotifyAlbums) {
-    const trackIds = [];
+                    for (const spotifyAlbum of spotifyAlbums) {
+                        const trackIds = [];
 
-    for (const track of spotifyAlbum.tracks) {
-      let existingSong = await Songs.findOne({ name: track.name });
-      console.log(`Buscando canción: ${track.name}, encontrada:`, existingSong);
-      let songId;
+                        for (const track of spotifyAlbum.tracks) {
+                            let existingSong = await Songs.findOne({ name: track.name });
 
-      if (!existingSong) {
-        // Buscar o guardar el artista de la canción
-        let artistId;
-        for (const artist of track.artists) {
-          let existingArtist = await Artist.findOne({ name: artist.name });
-          if (!existingArtist) {
-            const newArtist = new Artist({
-              name: artist.name,
-              genres: artist.genres,
-              image: artist.image,
-              popularity: artist.popularity
-            });
-            existingArtist = await newArtist.save();
-          }
-          artistId = existingArtist._id;
-          break;
-        }
-        console.log(track)
-        const newSong = new Songs({
-          name: track.name,
-          genres: track.genres,
-          duration: track.duration,
-          image: track.image,
-          url_cancion: track.preview_url,
-          idArtist: artistId
-        });
+                            let songId;
+                            if (!existingSong) {
+                                // Buscar o guardar el artista de la canción
+                                let artistId;
+                                for (const artist of track.artists) {
+                                    let existingArtist = await Artist.findOne({ name: artist.name });
+                                    if (!existingArtist) {
+                                        const newArtist = new Artist({
+                                            name: artist.name,
+                                            genres: artist.genres,
+                                            image: artist.image,
+                                            popularity: artist.popularity
+                                        });
+                                        existingArtist = await newArtist.save();
+                                    }
+                                    artistId = existingArtist._id;
+                                    break;
+                                }
 
-        try {
-          const savedSong = await newSong.save();
-          songId = savedSong._id;
-        } catch (error) {
-          console.error(`Error al guardar la canción ${track.name}: ${error.message}`);
-          continue;
-        }
-      } else {
-        songId = existingSong._id;
-      }
+                                const newSong = new Songs({
+                                    name: track.name,
+                                    genres: track.genres,
+                                    duration: track.duration,
+                                    image: track.image,
+                                    url_cancion: track.preview_url,
+                                    idArtist: artistId
+                                });
 
-      trackIds.push(songId);
-    }
+                                try {
+                                    const savedSong = await newSong.save();
+                                    songId = savedSong._id;
+                                } catch (error) {
+                                    console.error(`Error al guardar la canción ${track.name}: ${error.message}`);
+                                    continue;
+                                }
+                            } else {
+                                songId = existingSong._id;
+                            }
+
+                            trackIds.push(songId);
+                        }
 
                         const artistIds = [];
 
@@ -123,7 +122,7 @@ if (Array.isArray(spotifyAlbums)) {
                             idAlbum: spotifyAlbum.id,
                             name: spotifyAlbum.name,
                             idSong: trackIds,
-                            genres: spotifyAlbum.genres,
+                            genre: spotifyAlbum.genre,
                             image: spotifyAlbum.image,
                             idArtist: artistIds,
                             popularity: spotifyAlbum.popularity
@@ -144,27 +143,35 @@ if (Array.isArray(spotifyAlbums)) {
             } else {
                 console.log(`Usando solo álbumes de la base de datos local.`);
             }
-            console.log(albumsFromDB);
+
             const responseAlbums = albumsFromDB.map(album => ({
+                _id: album._id,
                 name: album.name,
                 duration: album.idSong.reduce((acc, song) => acc + song.duration, 0) / album.idSong.length,
-                genres: album.genres || [],
+                genres: album.genre || [],
                 image: album.image,
                 popularity: album.popularity,
                 artists: album.idArtist.map(artist => ({
-                  name: artist.name,
-                  genres: artist.genres,
-                  image: artist.image,
-                  popularity: artist.popularity
+                    name: artist.name,
+                    genres: artist.genres,
+                    image: artist.image,
+                    popularity: artist.popularity
                 })),
-                songs: album.idSong.map(song => ({
-                  name: song.name,
-                  duration: song.duration,
-                  image: song.image,
-                  url_cancion: song.url_cancion
-                }))
-              }));
-              
+                songs: album.idSong.map(song => {
+                    if (!song) return {}; // Agregar verificación para song
+
+                    return {
+                        _id: song._id,
+                        name: song.name,
+                        duration: song.duration,
+                        image: song.image,
+                        url_cancion: song.url_cancion,
+                        likes: song.likes || 0,
+                        isLiked: req.user ? (song.likedBy && song.likedBy.includes(req.user._id.toString())) : false
+                    };
+                })
+            }));
+
             console.log('Prepared response to send:', responseAlbums);
 
             res.json({

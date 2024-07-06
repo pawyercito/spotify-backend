@@ -1,14 +1,16 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 
-
- const SongsSchema = new mongoose.Schema({
+const SongSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    genres: [{ type: String, required: false }],
     duration: { type: Number, required: true },
-    image: { type: String, required: true },
-    url_cancion: { type: String, required: false },
-    idArtist: [{ type: Schema.Types.ObjectId, ref: 'Artist', required: true }],
+    genres: [{ type: String }],
+    image: { type: String },
+    url_cancion: { type: String },
+    idArtist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Artist' }],
+    likes: { type: Number, default: 0 },
+    likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]  // Array de ObjectId para usuarios que dieron like
 });
 
-export default mongoose.model('Songs', SongsSchema);
+const Songs = mongoose.model('Songs', SongSchema);
 
+export default Songs;

@@ -1,59 +1,55 @@
-// Importa el modelo Songs
 import Songs from '../../models/Songs.js';
 
 class SongsByGenresController {
-    constructor() {
-        console.log("Creando instancia de SongsByGenresController...");
-    }
-
     async getSongsByGenres(req, res) {
-        console.log("Accediendo a getSongsByGenres");
         try {
             const { genres, offset, limit } = req.query;
 
-            // Parsea los géneros a un arreglo si viene como una cadena y normalízalos a minúsculas
-            const parsedGenres = Array.isArray(genres)? genres : genres.split(',').map(genre => genre.trim().toLowerCase());
+            const parsedGenres = Array.isArray(genres) ? genres : genres.split(',').map(genre => genre.trim().toLowerCase());
+            const queryLimit = limit ? parseInt(limit) : 10;
+            const skipAmount = offset ? parseInt(offset) : 0;
 
-            // Define el límite y salto para paginación
-            const queryLimit = limit? parseInt(limit) : 10; // Si no se define un límite, usa 10 por defecto
-            const skipAmount = offset? parseInt(offset) : 0; // Si no se define un offset, comienza desde el principio
-
-            // Realiza la consulta a la base de datos con populate para obtener los nombres de los artistas
             const songs = await Songs.find({
                 genres: {
-                    $in: parsedGenres // Busca canciones donde alguno de los géneros coincida con los proporcionados
+                    $in: parsedGenres
                 }
             })
             .skip(skipAmount)
             .limit(queryLimit)
-            .populate('idArtist', 'name'); // Poblar solo el campo 'name' del modelo Artist
+            .populate('idArtist', 'name')
+            .lean();
+
+            // Obtener el usuario actual desde el middleware de autenticación
+            const currentUser = req.user;
 
             // Preparar la respuesta ajustando la estructura según lo solicitado
             const responseSongs = songs.map(song => ({
+                _id: song._id,
                 name: song.name,
                 duration: song.duration,
                 genres: song.genres,
                 image: song.image,
                 url_cancion: song.url_cancion,
-                Artist: song.idArtist.map(artist => artist.name) // Extraer solo el nombre de cada artista
+                artist: song.idArtist.map(artist => artist.name),
+                likes: song.likes || 0,
+                isLiked: currentUser ? (song.likedBy && song.likedBy.map(String).includes(currentUser._id.toString())) : false
             }));
 
             res.json({
                 message: {
                     description: "Se obtuvieron las canciones correctamente",
-                    code: 0 // Indicamos éxito al encontrar y obtener las canciones
+                    code: 0
                 },
                 data: responseSongs
             });
-
         } catch (error) {
             console.error(error);
             res.status(500).json({
                 message: {
                     description: 'Error interno del servidor',
-                    code: 1 // Indicamos un error en el proceso
+                    code: 1
                 },
-                data: {} // La descripción está vacía porque hubo un error
+                data: {}
             });
         }
     }
