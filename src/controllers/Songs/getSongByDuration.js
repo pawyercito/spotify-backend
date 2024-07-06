@@ -1,4 +1,3 @@
-// Importa el modelo Songs
 import Songs from '../../models/Songs.js';
 
 class SongsByDurationController {
@@ -27,7 +26,7 @@ class SongsByDurationController {
                 },
                 {
                     $group: {
-                        _id: "$_id", // Cambiar a agrupar por _id en lugar de name
+                        _id: "$_id", // Agrupar por _id
                         doc: { $first: "$$ROOT" } // Mantén el primer documento en cada grupo
                     }
                 },
@@ -57,12 +56,12 @@ class SongsByDurationController {
                 }
             ];
 
-            const songs = await Songs.aggregate(pipeline);
+            const songs = await Songs.aggregate(pipeline).exec();
 
-            // Obtener el usuario actual
+            // Obtener el usuario actual desde el middleware de autenticación
             const currentUser = req.user;
 
-            // Prepara la respuesta ajustando la estructura según lo solicitado
+            // Preparar la respuesta ajustando la estructura según lo solicitado
             const responseSongs = songs.map(song => ({
                 _id: song._id,
                 name: song.name,
@@ -70,9 +69,9 @@ class SongsByDurationController {
                 genres: song.genres,
                 image: song.image,
                 url_cancion: song.url_cancion,
-                artist: song.idArtist.map(artist => artist.name), // Extrae solo el nombre de cada artista
-                likes: song.likes || 0,
-                isLiked: currentUser ? (song.likedBy && song.likedBy.map(String).includes(currentUser._id.toString())) : false
+                artist: song.idArtist.map(artist => artist.name),
+                likes: likedBy.length || 0,
+                isLiked: currentUser ? (likedBy && likedBy.map(String).includes(currentUser._id.toString())) : false
             }));
 
             res.json({
