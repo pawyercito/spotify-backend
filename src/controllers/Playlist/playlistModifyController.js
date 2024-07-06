@@ -37,7 +37,7 @@ export const modifyPlaylist = async (req, res) => {
 
     const response = {
       message: {
-        code: 200,
+        code: 0,
         description: "Canción agregada a la playlist correctamente",
       },
       data: {
