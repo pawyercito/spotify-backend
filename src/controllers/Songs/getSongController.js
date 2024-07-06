@@ -14,25 +14,39 @@ class SongsController {
             const { name, offset = 0 } = req.query;
             const limit = 10;
             const regex = new RegExp(`^${name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}`, "i");
-
+    
+            // Asegurarse de que la población de idArtist se realiza correctamente
             let dbSongs = await Songs.find({ name: { $regex: regex } }, {}, { limit, skip: parseInt(offset) })
-                             .populate('idArtist', 'name'); // Asegúrate de que esto devuelve los nombres de los artistas
-
+                             .populate('idArtist', 'name'); // Población correcta de idArtist
+    
             if (dbSongs.length < limit) {
                 await this.searchAndSaveSpotifySongs(name, limit - dbSongs.length, parseInt(offset), dbSongs);
             }
-
-            // Obtener el usuario actual
+    
             const currentUser = req.user;
-
-            // Transforma la lista de canciones para incluir los campos "isLiked" y "likes"
-            const transformedSongs = dbSongs.map(song => ({
-                ...song.toObject(), // Convierte el documento a un objeto plano
-                artists: song.idArtist.map(artist => artist.name), // Extrae solo el nombre del artista
-                isLiked: currentUser ? song.likedBy.includes(currentUser._id.toString()) : false,
-                likes: song.likes || 0 // Incluye la cantidad de likes, o 0 si no hay
+    
+            // Transformar la lista de canciones para ajustar el formato de artistas
+            const transformedSongs = await Promise.all(dbSongs.map(async song => {
+                const { _id, name, duration, genres, image, url_cancion, idArtist, likes, likedBy, __v } = song.toObject();
+                const artists = await Promise.all(idArtist.map(async artistId => {
+                    const artist = await Artist.findById(artistId);
+                    return { id: artist._id, name: artist.name };
+                }));
+                return {
+                    _id,
+                    name,
+                    duration,
+                    genres,
+                    image,
+                    url_cancion,
+                    likes: likes || 0,
+                    likedBy,
+                    __v,
+                    artists,
+                    isLiked: currentUser ? song.likedBy.includes(currentUser._id.toString()) : false
+                };
             }));
-
+    
             return res.json({
                 message: { description: "Operación exitosa", code: 0 },
                 data: { Songs: transformedSongs }
