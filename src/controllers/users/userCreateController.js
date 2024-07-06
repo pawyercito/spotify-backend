@@ -10,7 +10,18 @@ export const register = async (req, res) => {
       return res.status(400).json({
         message: {
           description: 'Rol inválido. Los roles válidos son "1" para Artista y "2" para Usuario.',
-          code: 1 // Cambiado a un número
+          code: 1
+        }
+      });
+    }
+
+    // Verificar si el usuario ya existe
+    const existingUser = await User.findOne({ $or: [{ username }, { email }]});
+    if (existingUser) {
+      return res.status(409).json({
+        message: {
+          description: 'El usuario ya existe. Por favor, utiliza otro nombre de usuario o correo electrónico.',
+          code: 1 // Código personalizado para indicar duplicidad
         }
       });
     }
@@ -34,7 +45,7 @@ export const register = async (req, res) => {
     const responseMessage = {
       message: {
         description: 'Usuario creado correctamente',
-        code: 0 // Cambiado a un número
+        code: 0
       },
       data: {
         user: {
@@ -55,10 +66,18 @@ export const register = async (req, res) => {
     res.json(responseMessage);
   } catch (error) {
     console.error(error);
+    if (error.code === 11000 || error.code === 11001) { // Código de error para duplicados en MongoDB
+      return res.status(409).json({
+        message: {
+          description: 'El usuario ya existe. Por favor, utiliza otro nombre de usuario o correo electrónico.',
+          code: 2 // Código personalizado para indicar duplicidad
+        }
+      });
+    }
     res.status(500).json({
       message: {
         description: 'Error interno del servidor',
-        code: 1 // Cambiado a un número
+        code: 1
       }
     });
   }
